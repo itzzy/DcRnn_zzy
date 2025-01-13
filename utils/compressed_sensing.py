@@ -179,11 +179,9 @@ def undersample(x, mask, centred=False, norm='ortho', noise=0):
 
     norm: 'ortho' or None
         if 'ortho', performs unitary transform, otherwise normal dft
-
     noise_power: float
         simulates acquisition noise, complex AWG noise.
         must be percentage of the peak signal
-
     Returns
     -------
     xu: array_like
@@ -191,8 +189,15 @@ def undersample(x, mask, centred=False, norm='ortho', noise=0):
 
     x_fu: array_like
         undersampled data in k-space
-
     '''
+    # undersample-x-dtype: complex64
+    # undersample-x-shape: (1, 30, 256, 256)
+    # undersample-mask-dtype: float64
+    # undersample-mask-mask: (1, 30, 256, 256)
+    # print('undersample-x-dtype:',x.dtype)
+    # print('undersample-x-shape:',x.shape)
+    # print('undersample-mask-dtype:',mask.dtype)
+    # print('undersample-mask-mask:',mask.shape)
     assert x.shape == mask.shape
     # zero mean complex Gaussian noise
     noise_power = noise
@@ -214,7 +219,9 @@ def undersample(x, mask, centred=False, norm='ortho', noise=0):
         x_f = mymath.fft2(x, norm=norm)
         x_fu = mask * (x_f + nz)
         x_u = mymath.ifft2(x_fu, norm=norm)
-        return x_u, x_fu
+    # kspace中心化x_fu
+    x_fu= np.fft.fftshift(x_fu)
+    return x_u, x_fu
 
 
 def data_consistency(x, y, mask, centered=False, norm='ortho'):

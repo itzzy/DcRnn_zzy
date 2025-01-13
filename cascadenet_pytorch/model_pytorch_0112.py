@@ -420,204 +420,285 @@ class BCRNNlayer(nn.Module):
 
         return output
 
-
 class CRNN_MRI(nn.Module):
-    """
-    Model for Dynamic MRI Reconstruction using Convolutional Neural Networks
-
-    Parameters
-    -----------------------
-    incomings: three 5d tensors, [input_image, kspace_data, mask], each of shape (batch_size, 2, width, height, n_seq)
-
-    Returns
-    ------------------------------
-    output: 5d tensor, [output_image] with shape (batch_size, 2, width, height, n_seq)
-    """
-    # def __init__(self, n_ch=2, nf=64, ks=3, nc=5, nd=5):
     def __init__(self, n_ch=2, nf=64, ks=3, nc=10, nd=5):
-    # 文章里Proposed-B nf=128 
-    # def __init__(self, n_ch=2, nf=64, ks=3, nc=16, nd=5):
-        """
-        :param n_ch: number of channels
-        :param nf: number of filters
-        :param ks: kernel size
-        :param nc: number of iterations
-        :param nd: number of CRNN/BCRNN/CNN layers in each iteration
-        """
         super(CRNN_MRI, self).__init__()
         self.nc = nc
         self.nd = nd
         self.nf = nf
         self.ks = ks
 
-        # self.bcrnn = BCRNNlayer(n_ch, nf, ks)
-        # # self.conv1_x = nn.Conv2d(nf, nf, ks, padding = ks//2)
-        # # self.conv1_h = nn.Conv2d(nf, nf, ks, padding = ks//2)
-        # # self.conv2_x = nn.Conv2d(nf, nf, ks, padding = ks//2)
-        # # self.conv2_h = nn.Conv2d(nf, nf, ks, padding = ks//2)
-        # # self.conv3_x = nn.Conv2d(nf, nf, ks, padding = ks//2)
-        # # self.conv3_h = nn.Conv2d(nf, nf, ks, padding = ks//2)
-        # # self.conv4_x = nn.Conv2d(nf, n_ch, ks, padding = ks//2)
-        
-        # # 所有卷积层的权重和偏置都转换为了复数类型。请确保在模型初始化时执行这些转换。
-        # self.conv1_x = nn.Conv2d(nf, nf, ks, padding=ks//2)
-        # # self.conv1_x.weight = self.conv1_x.weight.to(torch.complex64)
-        # # self.conv1_x.bias = self.conv1_x.bias.to(torch.complex64)
-        # # self.conv1_x.bias = torch.nn.Parameter(self.conv1_x.bias.to(torch.complex64))
-        # self.conv1_x.weight = torch.nn.Parameter(self.conv1_x.weight.to(torch.float32))
-        # self.conv1_x.bias = torch.nn.Parameter(self.conv1_x.bias.to(torch.float32))
-
-        # self.conv1_h = nn.Conv2d(nf, nf, ks, padding=ks//2)
-        # # self.conv1_h.weight = self.conv1_h.weight.to(torch.complex64)
-        # # self.conv1_h.bias = self.conv1_h.bias.to(torch.complex64)
-        # # self.conv1_h.bias = torch.nn.Parameter(self.conv1_h.bias.to(torch.complex64))
-        # self.conv1_h.weight = torch.nn.Parameter(self.conv1_h.weight.to(torch.float32))
-        # self.conv1_h.bias = torch.nn.Parameter(self.conv1_h.bias.to(torch.float32))
-
-        # self.conv2_x = nn.Conv2d(nf, nf, ks, padding=ks//2)
-        # # self.conv2_x.weight = self.conv2_x.weight.to(torch.complex64)
-        # # self.conv2_x.bias = self.conv2_x.bias.to(torch.complex64)
-        # # self.conv2_x.bias = torch.nn.Parameter(self.conv2_x.bias.to(torch.complex64))
-
-        # self.conv2_h = nn.Conv2d(nf, nf, ks, padding=ks//2)
-        # # self.conv2_h.weight = self.conv2_h.weight.to(torch.complex64)
-        # # self.conv2_h.bias = self.conv2_h.bias.to(torch.complex64)
-        # # self.conv2_h.bias = torch.nn.Parameter(self.conv2_h.bias.to(torch.complex64))
-        # self.conv2_h.weight = torch.nn.Parameter(self.conv2_h.weight.to(torch.float32))
-        # self.conv2_h.bias = torch.nn.Parameter(self.conv2_h.bias.to(torch.float32))
-
-        # self.conv3_x = nn.Conv2d(nf, nf, ks, padding=ks//2)
-        # # self.conv3_x.weight = self.conv3_x.weight.to(torch.complex64)
-        # # self.conv3_x.bias = self.conv3_x.bias.to(torch.complex64)
-        # # self.conv3_x.bias = torch.nn.Parameter(self.conv3_x.bias.to(torch.complex64))
-        # self.conv3_x.weight = torch.nn.Parameter(self.conv3_x.weight.to(torch.float32))
-        # self.conv3_x.bias = torch.nn.Parameter(self.conv3_x.bias.to(torch.float32))
-
-        # self.conv3_h = nn.Conv2d(nf, nf, ks, padding=ks//2)
-        # # self.conv3_h.weight = self.conv3_h.weight.to(torch.complex64)
-        # # self.conv3_h.bias = self.conv3_h.bias.to(torch.complex64)
-        # # self.conv3_h.bias = torch.nn.Parameter(self.conv3_h.bias.to(torch.complex64))
-        # self.conv3_h.weight = torch.nn.Parameter(self.conv3_h.weight.to(torch.float32))
-        # self.conv3_h.bias = torch.nn.Parameter(self.conv3_h.bias.to(torch.float32))
-
-        # self.conv4_x = nn.Conv2d(nf, n_ch, ks, padding=ks//2)
-        # # self.conv4_x.weight = self.conv4_x.weight.to(torch.complex64)
-        # # self.conv4_x.bias = self.conv4_x.bias.to(torch.complex64)
-        # # self.conv4_x.bias = torch.nn.Parameter(self.conv4_x.bias.to(torch.complex64))
-        # self.conv4_x.weight = torch.nn.Parameter(self.conv4_x.weight.to(torch.float32))
-        # self.conv4_x.bias = torch.nn.Parameter(self.conv4_x.bias.to(torch.float32))
-
-        
-        # self.relu = nn.ReLU(inplace=True)
-        
         self.bcrnn = BCRNNlayer(n_ch, nf, ks)
         self.conv1_x = nn.Conv2d(nf, nf, ks, padding=ks // 2)
-        self.conv1_x.weight = torch.nn.Parameter(self.conv1_x.weight.to(torch.float16))
-        self.conv1_x.bias = torch.nn.Parameter(self.conv1_x.bias.to(torch.float16))
         self.conv1_h = nn.Conv2d(nf, nf, ks, padding=ks // 2)
-        self.conv1_h.weight = torch.nn.Parameter(self.conv1_h.weight.to(torch.float16))
-        self.conv1_h.bias = torch.nn.Parameter(self.conv1_h.bias.to(torch.float16))
         self.conv2_x = nn.Conv2d(nf, nf, ks, padding=ks // 2)
-        self.conv2_x.weight = torch.nn.Parameter(self.conv2_x.weight.to(torch.float16))
-        self.conv2_x.bias = torch.nn.Parameter(self.conv2_x.bias.to(torch.float16))
         self.conv2_h = nn.Conv2d(nf, nf, ks, padding=ks // 2)
-        self.conv2_h.weight = torch.nn.Parameter(self.conv2_h.weight.to(torch.float16))
-        self.conv2_h.bias = torch.nn.Parameter(self.conv2_h.bias.to(torch.float16))
         self.conv3_x = nn.Conv2d(nf, nf, ks, padding=ks // 2)
-        self.conv3_x.weight = torch.nn.Parameter(self.conv3_x.weight.to(torch.float16))
-        self.conv3_x.bias = torch.nn.Parameter(self.conv3_x.bias.to(torch.float16))
         self.conv3_h = nn.Conv2d(nf, nf, ks, padding=ks // 2)
-        self.conv3_h.weight = torch.nn.Parameter(self.conv3_h.weight.to(torch.float16))
-        self.conv3_h.bias = torch.nn.Parameter(self.conv3_h.bias.to(torch.float16))
         self.conv4_x = nn.Conv2d(nf, n_ch, ks, padding=ks // 2)
-        self.conv4_x.weight = torch.nn.Parameter(self.conv4_x.weight.to(torch.float16))
-        self.conv4_x.bias = torch.nn.Parameter(self.conv4_x.bias.to(torch.float16))
         self.relu = nn.ReLU(inplace=True)
 
         dcs = []
         for i in range(nc):
             dcs.append(cl.DataConsistencyInKspace(norm='ortho'))
         self.dcs = dcs
-
-    # def forward(self, x, k, m, test=False):
+    # rec = rec_net(im_u, k_u, mask)
     def forward(self, x, k, m, test=False, save_last=False):
         """
         x   - input in image domain, of shape (n, 2, nx, ny, n_seq)
         k   - initially sampled elements in k-space
         m   - corresponding nonzero location
         test - True: the model is in test mode, False: train mode
+        save_last - whether to save data (only for the last batch of the last epoch)
         """
-        '''
-        CRNN_MRI-forward-x: torch.float32
-        CRNN_MRI-forward-x: torch.Size([4, 2, 256, 32, 30])
-        CRNN_MRI-forward-k: torch.Size([4, 2, 256, 32, 30])
-        CRNN_MRI-forward-m: torch.Size([4, 2, 256, 32, 30])
-        '''
-        # print('CRNN_MRI-forward-x:',x.dtype)  # 检查输入数据类型
-        # print('CRNN_MRI-forward-x:',x.shape)  # 检查输入数据类型
-        # print('CRNN_MRI-forward-k:',k.shape)  # 检查输入数据类型
-        # print('CRNN_MRI-forward-m:',m.shape)  # 检查输入数据类型
+        print('CRNN_MRI-x device:', x.device)
+        print('CRNN_MRI-k device:', k.device)
+        print('CRNN_MRI-m device:', m.device)
+
         net = {}
         n_batch, n_ch, width, height, n_seq = x.size()
-        size_h = [n_seq*n_batch, self.nf, width, height]
+        size_h = [n_seq * n_batch, self.nf, width, height]
         if test:
             with torch.no_grad():
                 hid_init = Variable(torch.zeros(size_h)).cuda()
         else:
             hid_init = Variable(torch.zeros(size_h)).cuda()
 
-        for j in range(self.nd-1):
-            net['t0_x%d'%j]=hid_init
+        for j in range(self.nd - 1):
+            net['t0_x%d' % j] = hid_init
 
-        for i in range(1,self.nc+1):
-
-            x = x.permute(4,0,1,2,3)
+        for i in range(1, self.nc + 1):
+            x = x.permute(4, 0, 1, 2, 3)
             x = x.contiguous()
-            net['t%d_x0' % (i - 1)] = net['t%d_x0' % (i - 1)].view(n_seq, n_batch,self.nf,width, height)
-            net['t%d_x0'%i] = self.bcrnn(x, net['t%d_x0'%(i-1)], test)
-            net['t%d_x0'%i] = net['t%d_x0'%i].view(-1,self.nf,width, height)
+            net['t%d_x0' % (i - 1)] = net['t%d_x0' % (i - 1)].view(n_seq, n_batch, self.nf, width, height)
+            net['t%d_x0' % i] = self.bcrnn(x, net['t%d_x0' % (i - 1)], test)
+            net['t%d_x0' % i] = net['t%d_x0' % i].view(-1, self.nf, width, height)
 
-            net['t%d_x1'%i] = self.conv1_x(net['t%d_x0'%i])
-            net['t%d_h1'%i] = self.conv1_h(net['t%d_x1'%(i-1)])
-            net['t%d_x1'%i] = self.relu(net['t%d_h1'%i]+net['t%d_x1'%i])
+            net['t%d_x1' % i] = self.conv1_x(net['t%d_x0' % i])
+            net['t%d_h1' % i] = self.conv1_h(net['t%d_x1' % (i - 1)])
+            net['t%d_x1' % i] = self.relu(net['t%d_h1' % i] + net['t%d_x1' % i])
 
-            net['t%d_x2'%i] = self.conv2_x(net['t%d_x1'%i])
-            net['t%d_h2'%i] = self.conv2_h(net['t%d_x2'%(i-1)])
-            net['t%d_x2'%i] = self.relu(net['t%d_h2'%i]+net['t%d_x2'%i])
+            net['t%d_x2' % i] = self.conv2_x(net['t%d_x1' % i])
+            net['t%d_h2' % i] = self.conv2_h(net['t%d_x2' % (i - 1)])
+            net['t%d_x2' % i] = self.relu(net['t%d_h2' % i] + net['t%d_x2' % i])
 
-            net['t%d_x3'%i] = self.conv3_x(net['t%d_x2'%i])
-            net['t%d_h3'%i] = self.conv3_h(net['t%d_x3'%(i-1)])
-            net['t%d_x3'%i] = self.relu(net['t%d_h3'%i]+net['t%d_x3'%i])
+            net['t%d_x3' % i] = self.conv3_x(net['t%d_x2' % i])
+            net['t%d_h3' % i] = self.conv3_h(net['t%d_x3' % (i - 1)])
+            net['t%d_x3' % i] = self.relu(net['t%d_h3' % i] + net['t%d_x3' % i])
 
-            net['t%d_x4'%i] = self.conv4_x(net['t%d_x3'%i])
+            net['t%d_x4' % i] = self.conv4_x(net['t%d_x3' % i])
 
-            x = x.view(-1,n_ch,width, height)
-            # CRNN_MRI-x-1:dtype torch.float32
-            # CRNN_MRI-x-1:shape torch.Size([120, 2, 256, 32])
-            # print('CRNN_MRI-x-1:dtype',x.dtype)
-            # print('CRNN_MRI-x-1:shape',x.shape)
-            net['t%d_out'%i] = x + net['t%d_x4'%i]
+            x = x.view(-1, n_ch, width, height)
+            net['t%d_out' % i] = x + net['t%d_x4' % i]
 
-            net['t%d_out'%i] = net['t%d_out'%i].view(-1,n_batch, n_ch, width, height)
-            net['t%d_out'%i] = net['t%d_out'%i].permute(1,2,3,4,0)
-            net['t%d_out'%i].contiguous()
-            # net['t%d_out'%i] = self.dcs[i-1].perform(net['t%d_out'%i], k, m)
+            net['t%d_out' % i] = net['t%d_out' % i].view(-1, n_batch, n_ch, width, height)
+            net['t%d_out' % i] = net['t%d_out' % i].permute(1, 2, 3, 4, 0)
+            net['t%d_out' % i].contiguous()
             net['t%d_out' % i] = self.dcs[i - 1].perform(net['t%d_out' % i], k, m, save_last=save_last)
-            x = net['t%d_out'%i]
-            # CRNN_MRI-x-2:dtype torch.complex64
-            # CRNN_MRI-x-2:shape torch.Size([4, 2, 256, 32, 30])
-            # print('CRNN_MRI-x-2:dtype',x.dtype)
-            # print('CRNN_MRI-x-2:shape',x.shape)
+            x = net['t%d_out' % i]
 
-            # clean up i-1
             if test:
-                to_delete = [ key for key in net if ('t%d'%(i-1)) in key ]
-
+                to_delete = [key for key in net if ('t%d' % (i - 1)) in key]
                 for elt in to_delete:
                     del net[elt]
-
                 torch.cuda.empty_cache()
 
-        return net['t%d_out'%i]
+        return net['t%d_out' % i]
+# class CRNN_MRI(nn.Module):
+#     """
+#     Model for Dynamic MRI Reconstruction using Convolutional Neural Networks
+
+#     Parameters
+#     -----------------------
+#     incomings: three 5d tensors, [input_image, kspace_data, mask], each of shape (batch_size, 2, width, height, n_seq)
+
+#     Returns
+#     ------------------------------
+#     output: 5d tensor, [output_image] with shape (batch_size, 2, width, height, n_seq)
+#     """
+#     # def __init__(self, n_ch=2, nf=64, ks=3, nc=5, nd=5):
+#     def __init__(self, n_ch=2, nf=64, ks=3, nc=10, nd=5):
+#     # 文章里Proposed-B nf=128 
+#     # def __init__(self, n_ch=2, nf=64, ks=3, nc=16, nd=5):
+#         """
+#         :param n_ch: number of channels
+#         :param nf: number of filters
+#         :param ks: kernel size
+#         :param nc: number of iterations
+#         :param nd: number of CRNN/BCRNN/CNN layers in each iteration
+#         """
+#         super(CRNN_MRI, self).__init__()
+#         self.nc = nc
+#         self.nd = nd
+#         self.nf = nf
+#         self.ks = ks
+
+#         # self.bcrnn = BCRNNlayer(n_ch, nf, ks)
+#         # # self.conv1_x = nn.Conv2d(nf, nf, ks, padding = ks//2)
+#         # # self.conv1_h = nn.Conv2d(nf, nf, ks, padding = ks//2)
+#         # # self.conv2_x = nn.Conv2d(nf, nf, ks, padding = ks//2)
+#         # # self.conv2_h = nn.Conv2d(nf, nf, ks, padding = ks//2)
+#         # # self.conv3_x = nn.Conv2d(nf, nf, ks, padding = ks//2)
+#         # # self.conv3_h = nn.Conv2d(nf, nf, ks, padding = ks//2)
+#         # # self.conv4_x = nn.Conv2d(nf, n_ch, ks, padding = ks//2)
+        
+#         # # 所有卷积层的权重和偏置都转换为了复数类型。请确保在模型初始化时执行这些转换。
+#         # self.conv1_x = nn.Conv2d(nf, nf, ks, padding=ks//2)
+#         # # self.conv1_x.weight = self.conv1_x.weight.to(torch.complex64)
+#         # # self.conv1_x.bias = self.conv1_x.bias.to(torch.complex64)
+#         # # self.conv1_x.bias = torch.nn.Parameter(self.conv1_x.bias.to(torch.complex64))
+#         # self.conv1_x.weight = torch.nn.Parameter(self.conv1_x.weight.to(torch.float32))
+#         # self.conv1_x.bias = torch.nn.Parameter(self.conv1_x.bias.to(torch.float32))
+
+#         # self.conv1_h = nn.Conv2d(nf, nf, ks, padding=ks//2)
+#         # # self.conv1_h.weight = self.conv1_h.weight.to(torch.complex64)
+#         # # self.conv1_h.bias = self.conv1_h.bias.to(torch.complex64)
+#         # # self.conv1_h.bias = torch.nn.Parameter(self.conv1_h.bias.to(torch.complex64))
+#         # self.conv1_h.weight = torch.nn.Parameter(self.conv1_h.weight.to(torch.float32))
+#         # self.conv1_h.bias = torch.nn.Parameter(self.conv1_h.bias.to(torch.float32))
+
+#         # self.conv2_x = nn.Conv2d(nf, nf, ks, padding=ks//2)
+#         # # self.conv2_x.weight = self.conv2_x.weight.to(torch.complex64)
+#         # # self.conv2_x.bias = self.conv2_x.bias.to(torch.complex64)
+#         # # self.conv2_x.bias = torch.nn.Parameter(self.conv2_x.bias.to(torch.complex64))
+
+#         # self.conv2_h = nn.Conv2d(nf, nf, ks, padding=ks//2)
+#         # # self.conv2_h.weight = self.conv2_h.weight.to(torch.complex64)
+#         # # self.conv2_h.bias = self.conv2_h.bias.to(torch.complex64)
+#         # # self.conv2_h.bias = torch.nn.Parameter(self.conv2_h.bias.to(torch.complex64))
+#         # self.conv2_h.weight = torch.nn.Parameter(self.conv2_h.weight.to(torch.float32))
+#         # self.conv2_h.bias = torch.nn.Parameter(self.conv2_h.bias.to(torch.float32))
+
+#         # self.conv3_x = nn.Conv2d(nf, nf, ks, padding=ks//2)
+#         # # self.conv3_x.weight = self.conv3_x.weight.to(torch.complex64)
+#         # # self.conv3_x.bias = self.conv3_x.bias.to(torch.complex64)
+#         # # self.conv3_x.bias = torch.nn.Parameter(self.conv3_x.bias.to(torch.complex64))
+#         # self.conv3_x.weight = torch.nn.Parameter(self.conv3_x.weight.to(torch.float32))
+#         # self.conv3_x.bias = torch.nn.Parameter(self.conv3_x.bias.to(torch.float32))
+
+#         # self.conv3_h = nn.Conv2d(nf, nf, ks, padding=ks//2)
+#         # # self.conv3_h.weight = self.conv3_h.weight.to(torch.complex64)
+#         # # self.conv3_h.bias = self.conv3_h.bias.to(torch.complex64)
+#         # # self.conv3_h.bias = torch.nn.Parameter(self.conv3_h.bias.to(torch.complex64))
+#         # self.conv3_h.weight = torch.nn.Parameter(self.conv3_h.weight.to(torch.float32))
+#         # self.conv3_h.bias = torch.nn.Parameter(self.conv3_h.bias.to(torch.float32))
+
+#         # self.conv4_x = nn.Conv2d(nf, n_ch, ks, padding=ks//2)
+#         # # self.conv4_x.weight = self.conv4_x.weight.to(torch.complex64)
+#         # # self.conv4_x.bias = self.conv4_x.bias.to(torch.complex64)
+#         # # self.conv4_x.bias = torch.nn.Parameter(self.conv4_x.bias.to(torch.complex64))
+#         # self.conv4_x.weight = torch.nn.Parameter(self.conv4_x.weight.to(torch.float32))
+#         # self.conv4_x.bias = torch.nn.Parameter(self.conv4_x.bias.to(torch.float32))
+
+        
+#         # self.relu = nn.ReLU(inplace=True)
+        
+#         self.bcrnn = BCRNNlayer(n_ch, nf, ks)
+#         self.conv1_x = nn.Conv2d(nf, nf, ks, padding=ks // 2)
+#         self.conv1_x.weight = torch.nn.Parameter(self.conv1_x.weight.to(torch.float16))
+#         self.conv1_x.bias = torch.nn.Parameter(self.conv1_x.bias.to(torch.float16))
+#         self.conv1_h = nn.Conv2d(nf, nf, ks, padding=ks // 2)
+#         self.conv1_h.weight = torch.nn.Parameter(self.conv1_h.weight.to(torch.float16))
+#         self.conv1_h.bias = torch.nn.Parameter(self.conv1_h.bias.to(torch.float16))
+#         self.conv2_x = nn.Conv2d(nf, nf, ks, padding=ks // 2)
+#         self.conv2_x.weight = torch.nn.Parameter(self.conv2_x.weight.to(torch.float16))
+#         self.conv2_x.bias = torch.nn.Parameter(self.conv2_x.bias.to(torch.float16))
+#         self.conv2_h = nn.Conv2d(nf, nf, ks, padding=ks // 2)
+#         self.conv2_h.weight = torch.nn.Parameter(self.conv2_h.weight.to(torch.float16))
+#         self.conv2_h.bias = torch.nn.Parameter(self.conv2_h.bias.to(torch.float16))
+#         self.conv3_x = nn.Conv2d(nf, nf, ks, padding=ks // 2)
+#         self.conv3_x.weight = torch.nn.Parameter(self.conv3_x.weight.to(torch.float16))
+#         self.conv3_x.bias = torch.nn.Parameter(self.conv3_x.bias.to(torch.float16))
+#         self.conv3_h = nn.Conv2d(nf, nf, ks, padding=ks // 2)
+#         self.conv3_h.weight = torch.nn.Parameter(self.conv3_h.weight.to(torch.float16))
+#         self.conv3_h.bias = torch.nn.Parameter(self.conv3_h.bias.to(torch.float16))
+#         self.conv4_x = nn.Conv2d(nf, n_ch, ks, padding=ks // 2)
+#         self.conv4_x.weight = torch.nn.Parameter(self.conv4_x.weight.to(torch.float16))
+#         self.conv4_x.bias = torch.nn.Parameter(self.conv4_x.bias.to(torch.float16))
+#         self.relu = nn.ReLU(inplace=True)
+
+#         dcs = []
+#         for i in range(nc):
+#             dcs.append(cl.DataConsistencyInKspace(norm='ortho'))
+#         self.dcs = dcs
+
+#     def forward(self, x, k, m, test=False):
+#         """
+#         x   - input in image domain, of shape (n, 2, nx, ny, n_seq)
+#         k   - initially sampled elements in k-space
+#         m   - corresponding nonzero location
+#         test - True: the model is in test mode, False: train mode
+#         """
+#         '''
+#         CRNN_MRI-forward-x: torch.float32
+#         CRNN_MRI-forward-x: torch.Size([4, 2, 256, 32, 30])
+#         CRNN_MRI-forward-k: torch.Size([4, 2, 256, 32, 30])
+#         CRNN_MRI-forward-m: torch.Size([4, 2, 256, 32, 30])
+#         '''
+#         # print('CRNN_MRI-forward-x:',x.dtype)  # 检查输入数据类型
+#         # print('CRNN_MRI-forward-x:',x.shape)  # 检查输入数据类型
+#         # print('CRNN_MRI-forward-k:',k.shape)  # 检查输入数据类型
+#         # print('CRNN_MRI-forward-m:',m.shape)  # 检查输入数据类型
+#         net = {}
+#         n_batch, n_ch, width, height, n_seq = x.size()
+#         size_h = [n_seq*n_batch, self.nf, width, height]
+#         if test:
+#             with torch.no_grad():
+#                 hid_init = Variable(torch.zeros(size_h)).cuda()
+#         else:
+#             hid_init = Variable(torch.zeros(size_h)).cuda()
+
+#         for j in range(self.nd-1):
+#             net['t0_x%d'%j]=hid_init
+
+#         for i in range(1,self.nc+1):
+
+#             x = x.permute(4,0,1,2,3)
+#             x = x.contiguous()
+#             net['t%d_x0' % (i - 1)] = net['t%d_x0' % (i - 1)].view(n_seq, n_batch,self.nf,width, height)
+#             net['t%d_x0'%i] = self.bcrnn(x, net['t%d_x0'%(i-1)], test)
+#             net['t%d_x0'%i] = net['t%d_x0'%i].view(-1,self.nf,width, height)
+
+#             net['t%d_x1'%i] = self.conv1_x(net['t%d_x0'%i])
+#             net['t%d_h1'%i] = self.conv1_h(net['t%d_x1'%(i-1)])
+#             net['t%d_x1'%i] = self.relu(net['t%d_h1'%i]+net['t%d_x1'%i])
+
+#             net['t%d_x2'%i] = self.conv2_x(net['t%d_x1'%i])
+#             net['t%d_h2'%i] = self.conv2_h(net['t%d_x2'%(i-1)])
+#             net['t%d_x2'%i] = self.relu(net['t%d_h2'%i]+net['t%d_x2'%i])
+
+#             net['t%d_x3'%i] = self.conv3_x(net['t%d_x2'%i])
+#             net['t%d_h3'%i] = self.conv3_h(net['t%d_x3'%(i-1)])
+#             net['t%d_x3'%i] = self.relu(net['t%d_h3'%i]+net['t%d_x3'%i])
+
+#             net['t%d_x4'%i] = self.conv4_x(net['t%d_x3'%i])
+
+#             x = x.view(-1,n_ch,width, height)
+#             # CRNN_MRI-x-1:dtype torch.float32
+#             # CRNN_MRI-x-1:shape torch.Size([120, 2, 256, 32])
+#             # print('CRNN_MRI-x-1:dtype',x.dtype)
+#             # print('CRNN_MRI-x-1:shape',x.shape)
+#             net['t%d_out'%i] = x + net['t%d_x4'%i]
+
+#             net['t%d_out'%i] = net['t%d_out'%i].view(-1,n_batch, n_ch, width, height)
+#             net['t%d_out'%i] = net['t%d_out'%i].permute(1,2,3,4,0)
+#             net['t%d_out'%i].contiguous()
+#             net['t%d_out'%i] = self.dcs[i-1].perform(net['t%d_out'%i], k, m)
+#             x = net['t%d_out'%i]
+#             # CRNN_MRI-x-2:dtype torch.complex64
+#             # CRNN_MRI-x-2:shape torch.Size([4, 2, 256, 32, 30])
+#             # print('CRNN_MRI-x-2:dtype',x.dtype)
+#             # print('CRNN_MRI-x-2:shape',x.shape)
+
+#             # clean up i-1
+#             if test:
+#                 to_delete = [ key for key in net if ('t%d'%(i-1)) in key ]
+
+#                 for elt in to_delete:
+#                     del net[elt]
+
+#                 torch.cuda.empty_cache()
+
+#         return net['t%d_out'%i]
 
 

@@ -1,0 +1,4 @@
+usage: main_crnn_test.py [-h] [--num_epoch int] [--batch_size int]
+                         [--lr float] [--acceleration_factor float] [--debug]
+                         [--savefig]
+main_crnn_test.py: error: unrecognized arguments: output_0108.log

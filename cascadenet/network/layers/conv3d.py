@@ -1,7 +1,12 @@
 import theano
+
+
 import lasagne
 from lasagne.layers import Layer, prelu
 from helper import ensure_set_name
+
+theano.config.floatX = 'float32'
+theano.config.device = 'cuda'
 
 if 'cuda' in theano.config.device:
     from lasagne.layers.dnn import Conv3DDNNLayer as Conv3DLayer

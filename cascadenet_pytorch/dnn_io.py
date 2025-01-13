@@ -23,6 +23,31 @@ def r2c(x, axis=1):
     return x.reshape(x.shape[:-1])
 
 
+# def c2r(x, axis=1):
+#     """Convert complex data to pseudo-complex data (2 real channels)
+
+#     x: ndarray
+#         input data
+#     axis: int
+#         the axis that is used to represent the real and complex channel.
+#         e.g. if axis == i, then x.shape looks like (n_1, n_2, ..., n_i-1, 2, n_i+1, ..., nm)
+#     """
+#     shape = x.shape
+#     dtype = np.float32 if x.dtype == np.complex64 else np.float64
+#     # dnn_io-c2r-x-shape: torch.Size([2, 256, 256, 30])
+#     # dnn_io-c2r-x-dtype: torch.complex64
+#     print('dnn_io-c2r-x-shape:',x.shape)
+#     print('dnn_io-c2r-x-dtype:',x.dtype)
+#     x = np.ascontiguousarray(x).view(dtype=dtype).reshape(shape + (2,))
+
+#     n = x.ndim
+#     if axis < 0: axis = n + axis
+#     if axis < n:
+#         newshape = tuple([i for i in range(0, axis)]) + (n-1,) \
+#                    + tuple([i for i in range(axis, n-1)])
+#         x = x.transpose(newshape)
+
+#     return x
 def c2r(x, axis=1):
     """Convert complex data to pseudo-complex data (2 real channels)
 
@@ -35,8 +60,16 @@ def c2r(x, axis=1):
     shape = x.shape
     dtype = np.float32 if x.dtype == np.complex64 else np.float64
 
-    x = np.ascontiguousarray(x).view(dtype=dtype).reshape(shape + (2,))
+    # 确保输入数据是复数类型
+    if not np.iscomplexobj(x):
+        raise ValueError("Input data must be complex.")
 
+    # 将复数数据转换为两个实数通道
+    x_real = np.ascontiguousarray(x.real)
+    x_imag = np.ascontiguousarray(x.imag)
+    x = np.stack([x_real, x_imag], axis=-1)  # 在最后一个维度上堆叠实部和虚部
+
+    # 调整形状
     n = x.ndim
     if axis < 0: axis = n + axis
     if axis < n:
@@ -45,7 +78,6 @@ def c2r(x, axis=1):
         x = x.transpose(newshape)
 
     return x
-
 
 def mask_r2c(m):
     return m[0] if m.ndim == 3 else m[:, 0]
@@ -62,9 +94,21 @@ def to_tensor_format(x, mask=False):
 
     if mask:  # Hacky solution
         x = x*(1+1j)
-
+    # to_tensor_format-x-shape-1: (1, 256, 32, 30)
+    # to_tensor_format-x-dtype-1: complex64
+    # to_tensor_format-x-shape-2: (1, 2, 256, 32, 30)
+    # to_tensor_format-x-dtype-2: float32
+    # to_tensor_format-x-shape-1: (1, 256, 32, 30)
+    # to_tensor_format-x-dtype-1: complex128
+    # to_tensor_format-x-shape-2: (1, 2, 256, 32, 30)
+    # to_tensor_format-x-dtype-2: float64
+    # to_tensor_format-x-shape-1: torch.Size([2, 256, 256, 30])
+    # to_tensor_format-x-dtype-1: torch.complex64
+    print('to_tensor_format-x-shape-1:',x.shape)
+    print('to_tensor_format-x-dtype-1:',x.dtype)
     x = c2r(x)
-
+    print('to_tensor_format-x-shape-2:',x.shape)
+    print('to_tensor_format-x-dtype-2:',x.dtype)
     return x
 
 

@@ -35,6 +35,7 @@ def prep_input(im, acc=4.0):
     # prep_input-mask-dtype: float64
     print('prep_input-mask-shape:',mask.shape)
     print('prep_input-mask-dtype:',mask.dtype)
+    # 欠采样后的时域数据 和频域数据(kspace)
     im_und, k_und = cs.undersample(im, mask, centred=False, norm='ortho')
     im_gnd_l = torch.from_numpy(to_tensor_format(im))
     im_und_l = torch.from_numpy(to_tensor_format(im_und))
@@ -103,10 +104,10 @@ def create_dummy_data():
 # python main_crnn.py --acceleration_factor 4
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--num_epoch', metavar='int', nargs=1, default=['50'],
-                        help='number of epochs')
-    # parser.add_argument('--num_epoch', metavar='int', nargs=1, default=['300'],
+    # parser.add_argument('--num_epoch', metavar='int', nargs=1, default=['1'],
     #                     help='number of epochs')
+    parser.add_argument('--num_epoch', metavar='int', nargs=1, default=['300'],
+                        help='number of epochs')
     # parser.add_argument('--batch_size', metavar='int', nargs=1, default=['1'],
     #                     help='batch size')
     parser.add_argument('--batch_size', metavar='int', nargs=1, default=['4'],

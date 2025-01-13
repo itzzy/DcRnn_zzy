@@ -55,45 +55,6 @@ def kspace_to_image(k_space):
 #     plt.imsave(os.path.join(save_dir, f'{prefix}{data_name}.png'), data[0, 0, :, :], cmap='gray')
 
 #     print(f"Saved {data_name} data to {save_dir} with prefix '{prefix}'")
-
-# def save_data(data, save_dir, prefix, data_name):
-#     """
-#     将数据保存为图像和 .npy 文件。
-
-#     参数:
-#         data (np.ndarray): 需要保存的数据。
-#         save_dir (str): 保存文件的目录。
-#         prefix (str): 文件名前缀。
-#         data_name (str): 数据名称（如 'k', 'k0', 'mask', 'out'）。
-#     """
-#     # 确保保存目录存在
-#     if not os.path.exists(save_dir):
-#         os.makedirs(save_dir)
-
-#     # 保存为 .npy 文件
-#     np.save(os.path.join(save_dir, f'{prefix}{data_name}.npy'), data)
-
-#     # 保存为 .mat 文件
-#     savemat(os.path.join(save_dir, f'{prefix}{data_name}.mat'), {data_name: data})
-
-#     # 确保数据是 2D 灰度图像
-#     if data.ndim == 5:  # 如果数据是 5D 张量 [batch, channel, height, width, time]
-#         image_data = data[0, 0, :, :, 0]  # 取第一个样本、第一个通道、第一个时间帧
-#     elif data.ndim == 4:  # 如果数据是 4D 张量 [batch, channel, height, width]
-#         image_data = data[0, 0, :, :]  # 取第一个样本、第一个通道
-#     elif data.ndim == 3:  # 如果数据是 3D 张量 [channel, height, width]
-#         image_data = data[0, :, :]  # 取第一个通道
-#     else:  # 如果数据是 2D 张量 [height, width]
-#         image_data = data
-
-#     # 确保数据是实数（取幅值）
-#     if np.iscomplexobj(image_data):
-#         image_data = np.abs(image_data)
-#     # 归一化到 [0, 1] 范围
-#     image_data = (image_data - np.min(image_data)) / (np.max(image_data) - np.min(image_data))
-#     # 保存为图片
-#     plt.imsave(os.path.join(save_dir, f'{prefix}{data_name}.png'), image_data, cmap='gray')
-#     print(f"Saved {data_name} data to {save_dir} with prefix '{prefix}'")
 def save_data(data, save_dir, prefix, data_name):
     """
     将数据保存为图像和 .npy 文件。
@@ -107,10 +68,13 @@ def save_data(data, save_dir, prefix, data_name):
     # 确保保存目录存在
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
+
     # 保存为 .npy 文件
     np.save(os.path.join(save_dir, f'{prefix}{data_name}.npy'), data)
+
     # 保存为 .mat 文件
     savemat(os.path.join(save_dir, f'{prefix}{data_name}.mat'), {data_name: data})
+
     # 确保数据是 2D 灰度图像
     if data.ndim == 5:  # 如果数据是 5D 张量 [batch, channel, height, width, time]
         image_data = data[0, 0, :, :, 0]  # 取第一个样本、第一个通道、第一个时间帧
@@ -127,35 +91,11 @@ def save_data(data, save_dir, prefix, data_name):
 
     # 归一化到 [0, 1] 范围
     image_data = (image_data - np.min(image_data)) / (np.max(image_data) - np.min(image_data))
+
     # 保存为图片
     plt.imsave(os.path.join(save_dir, f'{prefix}{data_name}.png'), image_data, cmap='gray')
+
     print(f"Saved {data_name} data to {save_dir} with prefix '{prefix}'")
-  
-
-# def save_k_space_data(k, k0, mask, save_dir, prefix=''):
-#     """
-#     将 k-space 数据 k, k0 和 mask 保存为图片和 .npy 文件。
-
-#     参数:
-#         k (torch.Tensor): 输入的 k-space 数据。
-#         k0 (torch.Tensor): 初始采样的 k-space 数据。
-#         mask (torch.Tensor): 采样掩码。
-#         save_dir (str): 保存文件的目录。
-#         prefix (str): 文件名前缀。
-#     """
-#     # 将 Tensor 转换为 numpy 数组，并分离梯度
-#     k_np = k.detach().cpu().numpy()
-#     k0_np = k0.detach().cpu().numpy()
-#     mask_np = mask.detach().cpu().numpy()
-
-#     # 对 k 和 k0 进行逆傅里叶变换，转换到图像域
-#     k_image = kspace_to_image(k_np)
-#     k0_image = kspace_to_image(k0_np)
-
-#     # 保存 k, k0, mask
-#     save_data(k_image, save_dir, prefix, 'k_image')
-#     save_data(k0_image, save_dir, prefix, 'k0_image')
-#     save_data(mask_np, save_dir, prefix, 'mask')
 
 def save_k_space_data(k, k0, mask, save_dir, prefix=''):
     """
@@ -169,50 +109,19 @@ def save_k_space_data(k, k0, mask, save_dir, prefix=''):
         prefix (str): 文件名前缀。
     """
     # 将 Tensor 转换为 numpy 数组，并分离梯度
-    k_bak = k
-    k_np = k_bak.detach().cpu().numpy()
-    k0_bak =k0
-    k0_np = k0_bak.detach().cpu().numpy()
-    mask_bak = mask
-    mask_np = mask_bak.detach().cpu().numpy()
+    k_np = k.detach().cpu().numpy()
+    k0_np = k0.detach().cpu().numpy()
+    mask_np = mask.detach().cpu().numpy()
 
-    # 保存 k, k0, mask 为 .npy 和 .mat 格式
-    np.save(os.path.join(save_dir, f'{prefix}k.npy'), k_np)
-    savemat(os.path.join(save_dir, f'{prefix}k.mat'), {'k': k_np})
-
-    np.save(os.path.join(save_dir, f'{prefix}k0.npy'), k0_np)
-    savemat(os.path.join(save_dir, f'{prefix}k0.mat'), {'k0': k0_np})
-
-    np.save(os.path.join(save_dir, f'{prefix}mask.npy'), mask_np)
-    savemat(os.path.join(save_dir, f'{prefix}mask.mat'), {'mask': mask_np})
-    
-    # 将 k-space 数据转换到图像域
+    # 对 k 和 k0 进行逆傅里叶变换，转换到图像域
     k_image = kspace_to_image(k_np)
     k0_image = kspace_to_image(k0_np)
 
     # 保存 k, k0, mask
     save_data(k_image, save_dir, prefix, 'k_image')
     save_data(k0_image, save_dir, prefix, 'k0_image')
+    save_data(mask_np, save_dir, prefix, 'mask')
 
-    print(f"Saved k-space data to {save_dir} with prefix '{prefix}'")
-
-# def save_out_data(out, save_dir, prefix=''):
-#     """
-#     将 out 保存为图像和 .npy 文件。
-
-#     参数:
-#         out (torch.Tensor): data_consistency 返回的 k-space 数据。
-#         save_dir (str): 保存文件的目录。
-#         prefix (str): 文件名前缀。
-#     """
-#     # 将 Tensor 转换为 numpy 数组，并分离梯度
-#     out_np = out.detach().cpu().numpy()
-
-#     # 将 k-space 数据转换到图像域
-#     out_image = kspace_to_image(out_np)
-
-#     # 保存 out
-#     save_data(out_image, save_dir, prefix, 'out_image')
 def save_out_data(out, save_dir, prefix=''):
     """
     将 out 保存为图像和 .npy 文件。
@@ -223,23 +132,16 @@ def save_out_data(out, save_dir, prefix=''):
         prefix (str): 文件名前缀。
     """
     # 将 Tensor 转换为 numpy 数组，并分离梯度
-    out_bak = out
-    out_np = out_bak.detach().cpu().numpy()
+    out_np = out.detach().cpu().numpy()
 
-    # 保存 out 为 .npy 和 .mat 格式
-    np.save(os.path.join(save_dir, f'{prefix}out.npy'), out_np)
-    savemat(os.path.join(save_dir, f'{prefix}out.mat'), {'out': out_np})
-    
     # 将 k-space 数据转换到图像域
     out_image = kspace_to_image(out_np)
-    # 保存 out为图像
-    save_data(out_image, save_dir, prefix, 'out_image')
 
-    print(f"Saved out data to {save_dir} with prefix '{prefix}'")
+    # 保存 out
+    save_data(out_image, save_dir, prefix, 'out_image')
     
 # k 是当前 k 空间数据，k0 是原始采样数据，mask 是采样掩码。
-# def data_consistency(k, k0, mask, noise_lvl=None, save_dir=None, prefix=''):
-def data_consistency(k, k0, mask, noise_lvl=None, save_dir=None, prefix='', save_last=False):
+def data_consistency(k, k0, mask, noise_lvl=None, save_dir=None, prefix=''):
     """
     k    - input in k-space
     k0   - initially sampled elements in k-space
@@ -249,8 +151,8 @@ def data_consistency(k, k0, mask, noise_lvl=None, save_dir=None, prefix='', save
     prefix - prefix for saved files (optional)
     """
     # 如果需要保存输入数据
-    # if save_dir:
-    #     save_k_space_data(k, k0, mask, save_dir, prefix)
+    if save_dir:
+        save_k_space_data(k, k0, mask, save_dir, prefix)
 
     # 原始逻辑
     v = noise_lvl
@@ -260,11 +162,7 @@ def data_consistency(k, k0, mask, noise_lvl=None, save_dir=None, prefix='', save
         out = (1 - mask) * k + mask * k0
 
     # 如果需要保存输出数据
-    # if save_dir:
-    #     save_out_data(out, save_dir, prefix)a
-     # 如果需要保存数据（仅在最后一个 batch 的最后一个 epoch 保存）
-    if save_last and save_dir:
-        save_k_space_data(k, k0, mask, save_dir, prefix)
+    if save_dir:
         save_out_data(out, save_dir, prefix)
     return out
 
@@ -301,8 +199,7 @@ class DataConsistencyInKspace(nn.Module):
     def forward(self, *input, **kwargs):
         return self.perform(*input)
 
-    # def perform(self, x, k0, mask):
-    def perform(self, x, k0, mask, save_last=False):
+    def perform(self, x, k0, mask):
         """
         x    - input in image domain, of shape (n, 2, nx, ny[, nt])
         k0   - initially sampled elements in k-space
@@ -328,29 +225,8 @@ class DataConsistencyInKspace(nn.Module):
         # k = torch.fft.fft2(x, dim=(-2, -1), normalized=self.normalized)
         k = torch.fft.fft2(x, dim=(-2, -1), norm='forward')
         # out = data_consistency(k, k0, mask, self.noise_lvl)
-        # out = data_consistency(k, k0, mask, self.noise_lvl,'./main_crnn_test','crnn0111')
-        # x_res = torch.fft.ifft2(out, dim=(-2, -1), norm='backward')
-        out = data_consistency(k, k0, mask, self.noise_lvl, save_dir='./saved_data', prefix='last_epoch_', save_last=save_last)
-        # print('out-dtype:',out.dtype) out-dtype: torch.complex64
-        # k空间的最大值一般都是10点若干次方
-        # 将 out 张量从 CUDA 设备复制到 CPU
-        # out_cpu = out.cpu()
-        out_cpu = out.detach().cpu().numpy()
-        # k空间的最大值一般都是10点若干次方
-        # data_consistency out - min: 1.3857203e-08
-        # data_consistency out - max: 10.667565
-        # data_consistency out - max: 0.012679623
-        # print("data_consistency out - min:", np.min(np.abs(out_cpu)))
-        # print("data_consistency out - max:",np.max(np.abs(out_cpu)))
-        # print("data_consistency out - max:", np.mean(np.abs(out_cpu)))
-        # 逆傅里叶变换
+        out = data_consistency(k, k0, mask, self.noise_lvl,'./main_crnn_test','crnn0111')
         x_res = torch.fft.ifft2(out, dim=(-2, -1), norm='backward')
-        # data_consistency x_res - min: 5.820766091346741e-11
-        # data_consistency x_res - max: 0.07881709188222885
-        # data_consistency x_res - mean: 0.0012523188488557935
-        # print("data_consistency x_res - min:", torch.min(torch.abs(x_res)).item())
-        # print("data_consistency x_res - max:",torch.max(torch.abs(x_res)).item())
-        # print("data_consistency x_res - mean:", torch.mean(torch.abs(x_res)).item())
 
 
         if x.dim() == 4:

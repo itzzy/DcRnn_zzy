@@ -7,3 +7,13 @@ models
 *.base
 deep_mri
 *.#*
+__pycache__
+*.csv
+experiments/
+main_crnn_test/
+models/
+output/
+runs/
+saved_data/
+log_*
+output_*
