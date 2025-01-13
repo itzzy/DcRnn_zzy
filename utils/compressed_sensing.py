@@ -209,7 +209,8 @@ def undersample(x, mask, centred=False, norm='ortho', noise=0):
         nz = nz * np.sqrt(np.prod(mask.shape[-2:]))
     else:
         nz = nz * np.prod(mask.shape[-2:])
-
+    print('undersample-nz-dtype:',nz.dtype)
+    print('undersample-nz:',nz)
     if centred:
         x_f = mymath.fft2c(x, norm=norm)
         x_fu = mask * (x_f + nz)
@@ -220,7 +221,7 @@ def undersample(x, mask, centred=False, norm='ortho', noise=0):
         x_fu = mask * (x_f + nz)
         x_u = mymath.ifft2(x_fu, norm=norm)
     # kspace中心化x_fu
-    x_fu= np.fft.fftshift(x_fu)
+    # x_fu= np.fft.fftshift(x_fu)
     return x_u, x_fu
 
 

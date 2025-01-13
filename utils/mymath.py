@@ -25,13 +25,17 @@ def fft2c(x,norm='ortho'):
     '''
     # axes = (len(x.shape)-2, len(x.shape)-1)  # get last 2 axes
     axes = (-2, -1)  # get last 2 axes
+    # axes = (-3, -2)  # 对 height 和 width 进行操作
     # res = fftshift(fft2(ifftshift(x, axes=axes), norm='ortho'), axes=axes)
-    res = fftshift(fft2(ifftshift(x, axes=axes), norm), axes=axes)
+    # res = fftshift(fft2(ifftshift(x, axes=axes), norm), axes=axes)
+    # 只对最后两个轴进行 ifftshift 和 fftshift
+    res = np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(x, axes=axes), norm=norm), axes=axes)
     return res
 
 
 # def ifft2c(x):
 def ifft2c(x,norm='ortho'):
+    # print('iff2c-x-shape:',x.shape) # iff2c-x-shape: (256, 256, 30)
     '''
     Centered ifft
     Note: fft2 applies fft to last 2 axes by default
@@ -39,8 +43,11 @@ def ifft2c(x,norm='ortho'):
     :return:
     '''
     axes = (-2, -1)  # get last 2 axes
+    # axes = (-3, -2)  # 对 height 和 width 进行操作
     # res = fftshift(ifft2(ifftshift(x, axes=axes), norm='ortho'), axes=axes)
-    res = fftshift(ifft2(ifftshift(x, axes=axes), norm), axes=axes)
+    # res = fftshift(ifft2(ifftshift(x, axes=axes), norm), axes=axes)
+    # 确保 ifftshift 和 fftshift 只对指定的轴进行操作
+    res = np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(x, axes=axes), norm=norm, axes=axes), axes=axes)
     return res
 
 

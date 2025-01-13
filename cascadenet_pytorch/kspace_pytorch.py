@@ -324,13 +324,20 @@ class DataConsistencyInKspace(nn.Module):
         # k = torch.fft(x, 2, normalized=self.normalized)
         # out = data_consistency(k, k0, mask, self.noise_lvl)
         # x_res = torch.ifft(out, 2, normalized=self.normalized)
-        
+        # 检查 save_dir 是否存在，如果不存在则创建
+        save_dir='./saved_data/0113_2'
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
         # k = torch.fft.fft2(x, dim=(-2, -1), normalized=self.normalized)
-        k = torch.fft.fft2(x, dim=(-2, -1), norm='forward')
+        # k = torch.fft.fft2(x, dim=(-2, -1), norm='forward')
+        # k = torch.fft.fft2(x, dim=(-3, -2), norm='forward')
+        # 正向傅里叶变换
+        k = torch.fft.fft2(x, dim=(-2, -1), norm='ortho')
+        # k = torch.fft.fft2(x, dim=(-3, -2), norm='ortho')
         # out = data_consistency(k, k0, mask, self.noise_lvl)
         # out = data_consistency(k, k0, mask, self.noise_lvl,'./main_crnn_test','crnn0111')
         # x_res = torch.fft.ifft2(out, dim=(-2, -1), norm='backward')
-        out = data_consistency(k, k0, mask, self.noise_lvl, save_dir='./saved_data', prefix='last_epoch_', save_last=save_last)
+        out = data_consistency(k, k0, mask, self.noise_lvl, save_dir=save_dir, prefix='last_epoch_', save_last=save_last)
         # print('out-dtype:',out.dtype) out-dtype: torch.complex64
         # k空间的最大值一般都是10点若干次方
         # 将 out 张量从 CUDA 设备复制到 CPU
@@ -344,7 +351,10 @@ class DataConsistencyInKspace(nn.Module):
         # print("data_consistency out - max:",np.max(np.abs(out_cpu)))
         # print("data_consistency out - max:", np.mean(np.abs(out_cpu)))
         # 逆傅里叶变换
-        x_res = torch.fft.ifft2(out, dim=(-2, -1), norm='backward')
+        # x_res = torch.fft.ifft2(out, dim=(-2, -1), norm='backward')
+        # 逆傅里叶变换
+        # x_res = torch.fft.ifft2(out, dim=(-3, -2), norm='ortho')
+        x_res = torch.fft.ifft2(out, dim=(-2, -1), norm='ortho')
         # data_consistency x_res - min: 5.820766091346741e-11
         # data_consistency x_res - max: 0.07881709188222885
         # data_consistency x_res - mean: 0.0012523188488557935
