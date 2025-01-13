@@ -467,14 +467,14 @@ from torch.utils.data.distributed import DistributedSampler
 os.environ['OMP_NUM_THREADS'] = '1'
 # 设置PYTORCH_CUDA_ALLOC_CONF环境变量，以减少CUDA内存碎片
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'  # 指定使用的 GPU
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'  # 指定使用的 GPU
  # 定义 Tensor 类型
 cuda = torch.cuda.is_available()
 Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 
 def prep_input(im, acc=4.0):
     # Shape of input im in prep_input: torch.Size([2, 30, 256, 256])
-    print(f"Shape of input im in prep_input: {im.shape}")
+    # print(f"Shape of input im in prep_input: {im.shape}")
     # Number of elements in im: <built-in method size of Tensor object at 0x7fa4c4507ba0>
     # print(f"Number of elements in im: {im.size}")
     # 对输入数据 im 进行必要的检查和处理
@@ -484,7 +484,7 @@ def prep_input(im, acc=4.0):
     mask = cs.cartesian_mask(im.shape, acc, sample_n=8)
     im_und, k_und = cs.undersample(im, mask, centred=False, norm='ortho')
     # prep_input-im: torch.Size([2, 30, 256, 256])
-    print('prep_input-im:',im.shape)
+    # print('prep_input-im:',im.shape)
     im_gnd_l = torch.from_numpy(to_tensor_format(im)).float()
     im_und_l = torch.from_numpy(to_tensor_format(im_und)).float()
     k_und_l = torch.from_numpy(to_tensor_format(k_und)).float()
@@ -510,6 +510,8 @@ def create_dummy_data():
     return train, validate, test
 
 # def main(): torchrun --nproc_per_node=2 main_crnn_DDP_test.py --acceleration_factor 4
+# python -m torch.distributed.launch --nproc_per_node=2 --master_port=29501 --use_env main_crnn_DDP_test.py --acceleration_factor 4
+
 if __name__ == '__main__':
     # 解析命令行参数
     parser = argparse.ArgumentParser()
@@ -540,7 +542,7 @@ if __name__ == '__main__':
     print(f"Rank {args.local_rank} using GPU: {torch.cuda.current_device()}")
 
     # Project config
-    model_name = 'crnn_mri_0112_ddp'
+    model_name = 'crnn_mri_0113_ddp'
     acc = float(args.acceleration_factor[0])
     num_epoch = int(args.num_epoch[0])
     batch_size = int(args.batch_size[0])
@@ -569,9 +571,9 @@ if __name__ == '__main__':
     # rec_net = DDP(rec_net, device_ids=[args.local_rank], output_device=args.local_rank)
     # rec_net = DDP(rec_net, device_ids=[args.local_rank], output_device=args.local_rank)
     rec_net = DDP(rec_net, device_ids=[local_rank], output_device=local_rank)
-    for param in rec_net.parameters():
-        print(param.dtype, param.grad.dtype if param.grad is not None else None)  
-    print("Parameter Count: %d" % count_parameters(rec_net))
+    # for param in rec_net.parameters():
+        # print(param.dtype, param.grad.dtype if param.grad is not None else None) # torch.float16 None
+    print("Parameter Count: %d" % count_parameters(rec_net)) # Parameter Count: 297794
     # 确保模型参数是 FP32
     rec_net.float()
 

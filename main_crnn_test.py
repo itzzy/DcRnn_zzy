@@ -40,7 +40,7 @@ os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 # os.environ["CUDA_VISIBLE_DEVICES"] = "3" #,0,1,2,4,5,6,7
 # os.environ['CUDA_VISIBLE_DEVICES'] = '1'  # 指定使用 GPU 1 和 GPU 4
 # os.environ['CUDA_VISIBLE_DEVICES'] = '6'  # 指定使用 GPU 1 和 GPU 4
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'  # 指定使用 GPU 1 和 GPU 4
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'  # 指定使用 GPU 1 和 GPU 4
 
 def prep_input(im, acc=4.0):
     """Undersample the batch, then reformat them into what the network accepts.
@@ -51,17 +51,13 @@ def prep_input(im, acc=4.0):
                         higher the value, more undersampling
     """
     mask = cs.cartesian_mask(im.shape, acc, sample_n=8)
-    # prep_input-mask-shape: (4, 30, 256, 32)
+    # prep_input-mask-shape: (4, 30, 256, 256)
     # prep_input-mask-dtype: float64
     # print('prep_input-mask-shape:',mask.shape)
     # print('prep_input-mask-dtype:',mask.dtype)
     im_und, k_und = cs.undersample(im, mask, centred=False, norm='ortho')
     # 将kspace中心化
     # im_und, k_und = cs.undersample(im, mask, centred=True, norm='ortho')
-    # im_gnd_l = torch.from_numpy(to_tensor_format(im))
-    # im_und_l = torch.from_numpy(to_tensor_format(im_und))
-    # k_und_l = torch.from_numpy(to_tensor_format(k_und))
-    # mask_l = torch.from_numpy(to_tensor_format(mask, mask=True))
     # 将数据转换为 torch.float32 类型，减少内存占用
     im_gnd_l = torch.from_numpy(to_tensor_format(im)).float()
     im_und_l = torch.from_numpy(to_tensor_format(im_und)).float()
@@ -111,7 +107,7 @@ def create_dummy_data():
 # nohup python main_crnn_test.py --acceleration_factor 4 > output_0112_2.log 2>&1 &
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--num_epoch', metavar='int', nargs=1, default=['100'],
+    parser.add_argument('--num_epoch', metavar='int', nargs=1, default=['1'],
                         help='number of epochs')
     # parser.add_argument('--num_epoch', metavar='int', nargs=1, default=['400'],
     #                     help='number of epochs')

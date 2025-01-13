@@ -209,8 +209,9 @@ def undersample(x, mask, centred=False, norm='ortho', noise=0):
         nz = nz * np.sqrt(np.prod(mask.shape[-2:]))
     else:
         nz = nz * np.prod(mask.shape[-2:])
-    print('undersample-nz-dtype:',nz.dtype)
-    print('undersample-nz:',nz)
+    # undersample-nz-dtype: complex128
+    # print('undersample-nz-dtype:',nz.dtype)
+    # print('undersample-nz:',nz)
     if centred:
         x_f = mymath.fft2c(x, norm=norm)
         x_fu = mask * (x_f + nz)

@@ -433,7 +433,7 @@ class CRNN_MRI(nn.Module):
     ------------------------------
     output: 5d tensor, [output_image] with shape (batch_size, 2, width, height, n_seq)
     """
-    # def __init__(self, n_ch=2, nf=64, ks=3, nc=5, nd=5):
+    # def __init__(self, n_ch=2, nf=128, ks=3, nc=10, nd=5):
     def __init__(self, n_ch=2, nf=64, ks=3, nc=10, nd=5):
     # 文章里Proposed-B nf=128 
     # def __init__(self, n_ch=2, nf=64, ks=3, nc=16, nd=5):

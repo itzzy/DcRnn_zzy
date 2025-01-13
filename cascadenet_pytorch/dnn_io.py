@@ -94,21 +94,15 @@ def to_tensor_format(x, mask=False):
 
     if mask:  # Hacky solution
         x = x*(1+1j)
-    # to_tensor_format-x-shape-1: (1, 256, 32, 30)
-    # to_tensor_format-x-dtype-1: complex64
-    # to_tensor_format-x-shape-2: (1, 2, 256, 32, 30)
-    # to_tensor_format-x-dtype-2: float32
-    # to_tensor_format-x-shape-1: (1, 256, 32, 30)
-    # to_tensor_format-x-dtype-1: complex128
-    # to_tensor_format-x-shape-2: (1, 2, 256, 32, 30)
-    # to_tensor_format-x-dtype-2: float64
     # to_tensor_format-x-shape-1: torch.Size([2, 256, 256, 30])
     # to_tensor_format-x-dtype-1: torch.complex64
-    print('to_tensor_format-x-shape-1:',x.shape)
-    print('to_tensor_format-x-dtype-1:',x.dtype)
+    # print('to_tensor_format-x-shape-1:',x.shape)
+    # print('to_tensor_format-x-dtype-1:',x.dtype)
     x = c2r(x)
-    print('to_tensor_format-x-shape-2:',x.shape)
-    print('to_tensor_format-x-dtype-2:',x.dtype)
+    # to_tensor_format-x-shape-2: (1, 2, 256, 256, 30)
+    # to_tensor_format-x-dtype-2: float64
+    # print('to_tensor_format-x-shape-2:',x.shape)
+    # print('to_tensor_format-x-dtype-2:',x.dtype)
     return x
 
 
