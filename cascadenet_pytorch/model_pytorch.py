@@ -386,6 +386,8 @@ class BCRNNlayer(nn.Module):
     def forward(self, input, input_iteration, test=False):
         # BCRNNlayer-forward-input: torch.complex64
         # print('BCRNNlayer-forward-input:',input.dtype)
+        # BCRNNlayer-forward-input-shape: torch.Size([30, 1, 2, 256, 256])
+        # print('BCRNNlayer-forward-input-shape:',input.shape)
         nt, nb, nc, nx, ny = input.shape
         size_h = [nb, self.hidden_size, nx, ny]
         if test:
@@ -573,6 +575,7 @@ class CRNN_MRI(nn.Module):
 
             x = x.permute(4,0,1,2,3)
             x = x.contiguous()
+            # print('crnn_mri-forward-x-shape:',x.shape) #crnn_mri-forward-x-shape: torch.Size([30, 1, 2, 256, 256])
             net['t%d_x0' % (i - 1)] = net['t%d_x0' % (i - 1)].view(n_seq, n_batch,self.nf,width, height)
             net['t%d_x0'%i] = self.bcrnn(x, net['t%d_x0'%(i-1)], test)
             net['t%d_x0'%i] = net['t%d_x0'%i].view(-1,self.nf,width, height)
@@ -602,6 +605,8 @@ class CRNN_MRI(nn.Module):
             net['t%d_out'%i] = net['t%d_out'%i].permute(1,2,3,4,0)
             net['t%d_out'%i].contiguous()
             # net['t%d_out'%i] = self.dcs[i-1].perform(net['t%d_out'%i], k, m)
+            # CRNN-MRI-net-shap:e torch.Size([1, 2, 256, 256, 30])
+            # print('CRNN-MRI-net-shap:e',net['t%d_out'%i].shape)
             net['t%d_out' % i] = self.dcs[i - 1].perform(net['t%d_out' % i], k, m, save_last=save_last)
             x = net['t%d_out'%i]
             # CRNN_MRI-x-2:dtype torch.complex64

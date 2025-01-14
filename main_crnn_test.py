@@ -36,6 +36,7 @@ from torch.utils.tensorboard import SummaryWriter
 os.environ['OMP_NUM_THREADS'] = '1'
 # 设置PYTORCH_CUDA_ALLOC_CONF环境变量，以减少CUDA内存碎片
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
 # os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
 # os.environ["CUDA_VISIBLE_DEVICES"] = "3" #,0,1,2,4,5,6,7
 # os.environ['CUDA_VISIBLE_DEVICES'] = '1'  # 指定使用 GPU 1 和 GPU 4
@@ -51,10 +52,10 @@ def prep_input(im, acc=4.0):
                         higher the value, more undersampling
     """
     mask = cs.cartesian_mask(im.shape, acc, sample_n=8)
-    # prep_input-mask-shape: (4, 30, 256, 256)
     # prep_input-mask-dtype: float64
-    # print('prep_input-mask-shape:',mask.shape)
     # print('prep_input-mask-dtype:',mask.dtype)
+    # print('prep_input-im-shape:',im.shape) #prep_input-im-shape: (1, 30, 256, 256)
+    # print('prep_input-mask-shape:',mask.shape)# prep_input-mask-shape: (1, 30, 256, 256)
     im_und, k_und = cs.undersample(im, mask, centred=False, norm='ortho')
     # 将kspace中心化
     # im_und, k_und = cs.undersample(im, mask, centred=True, norm='ortho')
@@ -67,6 +68,10 @@ def prep_input(im, acc=4.0):
     # prep_input-mask_l-dtype: torch.float64
     # print('prep_input-mask_l-shape:',mask_l.shape)
     # print('prep_input-mask_l-dtype:',mask_l.dtype)
+    # prep_input-im_und_l-shape: torch.Size([1, 2, 256, 256, 30])
+    # prep_input-k_und_l-shape: torch.Size([1, 2, 256, 256, 30])
+    # print('prep_input-im_und_l-shape:',im_und_l.shape)
+    # print('prep_input-k_und_l-shape:',k_und_l.shape)
 
     return im_und_l, k_und_l, mask_l, im_gnd_l
 
@@ -168,12 +173,12 @@ if __name__ == '__main__':
     # rec_net = CRNN_MRI()
     # 初始化模型和优化器
     rec_net = CRNN_MRI().cuda()
+    # Parameter Count: 297794
     print("Parameter Count: %d" % count_parameters(rec_net))
     # 确保模型参数是 FP32
     rec_net.float()
 
     criterion = torch.nn.MSELoss()
-    # optimizer = optim.Adam(rec_net.parameters(), lr=float(args.lr[0]), betas=(0.5, 0.999))
     #使用混合精度训练
     # scaler = GradScaler()
     # scaler = torch.amp.GradScaler('cuda')
@@ -486,7 +491,7 @@ if __name__ == '__main__':
                 save_last = is_last_epoch and is_last_batch
                 print('iterate_minibatch-test-save_last:',save_last)
                 # pred = rec_net(im_u, k_u, mask, test=True)
-                rec = rec_net(im_u, k_u, mask, test=True, save_last=save_last)
+                pred = rec_net(im_u, k_u, mask, test=True, save_last=save_last)
             # torch.cuda.empty_cache()
             
             # 

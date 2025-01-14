@@ -190,12 +190,10 @@ def undersample(x, mask, centred=False, norm='ortho', noise=0):
     x_fu: array_like
         undersampled data in k-space
     '''
-    # undersample-x-dtype: complex64
-    # undersample-x-shape: (1, 30, 256, 256)
     # undersample-mask-dtype: float64
     # undersample-mask-mask: (1, 30, 256, 256)
     # print('undersample-x-dtype:',x.dtype)
-    # print('undersample-x-shape:',x.shape)
+    # print('undersample-x-shape:',x.shape) #undersample-x-shape: (1, 30, 256, 256)
     # print('undersample-mask-dtype:',mask.dtype)
     # print('undersample-mask-mask:',mask.shape)
     assert x.shape == mask.shape

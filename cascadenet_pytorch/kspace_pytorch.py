@@ -25,8 +25,11 @@ def kspace_to_image(k_space):
     返回:
         image (np.ndarray): 图像域数据，形状与输入相同。
     """
+    # kspace_to_image-k_space-shape: (1, 30, 256, 256, 2)
+    # print('kspace_to_image-k_space-shape:',k_space.shape)
     # 在最后两个维度（height 和 width）进行逆傅里叶变换
-    image = np.fft.ifft2(k_space, axes=(-2, -1))
+    # image = np.fft.ifft2(k_space, axes=(-2, -1))
+    image = np.fft.ifft2(k_space, axes=(-3, -2),norm='ortho')
     # 取幅值（可选，也可以取实部或虚部）
     image = np.abs(image)
     return image
@@ -317,23 +320,25 @@ class DataConsistencyInKspace(nn.Module):
             x    = x.permute(0, 4, 2, 3, 1)
             k0   = k0.permute(0, 4, 2, 3, 1)
             mask = mask.permute(0, 4, 2, 3, 1)
-        # perform-x-shape: torch.Size([4, 30, 256, 32, 2])
-        # perform-x-dtype: torch.float32
-        # print('perform-x-shape:',x.shape)
+        #DataConsistencyInKspace-perform-x-shape: torch.Size([1, 30, 256, 256, 2])
+        # perform-x-dtype: torch.float32a
+        # print('DataConsistencyInKspace-perform-x-shape:',x.shape)
         # print('perform-x-dtype:',x.dtype)   
         # k = torch.fft(x, 2, normalized=self.normalized)
         # out = data_consistency(k, k0, mask, self.noise_lvl)
         # x_res = torch.ifft(out, 2, normalized=self.normalized)
         # 检查 save_dir 是否存在，如果不存在则创建
-        save_dir='./saved_data/0113_2'
+        save_dir='./saved_data/0114_3'
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
         # k = torch.fft.fft2(x, dim=(-2, -1), normalized=self.normalized)
         # k = torch.fft.fft2(x, dim=(-2, -1), norm='forward')
         # k = torch.fft.fft2(x, dim=(-3, -2), norm='forward')
         # 正向傅里叶变换
-        k = torch.fft.fft2(x, dim=(-2, -1), norm='ortho')
+        # k = torch.fft.fft2(x, dim=(-2, -1), norm='ortho')
         # k = torch.fft.fft2(x, dim=(-3, -2), norm='ortho')
+        # k shape: (n, nt, nx, ny, 2)
+        k = torch.fft.fft2(x, dim=(-3, -2), norm='ortho' if self.normalized else 'backward')
         # out = data_consistency(k, k0, mask, self.noise_lvl)
         # out = data_consistency(k, k0, mask, self.noise_lvl,'./main_crnn_test','crnn0111')
         # x_res = torch.fft.ifft2(out, dim=(-2, -1), norm='backward')
@@ -354,7 +359,9 @@ class DataConsistencyInKspace(nn.Module):
         # x_res = torch.fft.ifft2(out, dim=(-2, -1), norm='backward')
         # 逆傅里叶变换
         # x_res = torch.fft.ifft2(out, dim=(-3, -2), norm='ortho')
-        x_res = torch.fft.ifft2(out, dim=(-2, -1), norm='ortho')
+        # x_res shape: (n, nt, nx, ny, 2)
+        x_res = torch.fft.ifft2(out, dim=(-3, -2), norm='ortho' if self.normalized else 'backward')
+        # x_res = torch.fft.ifft2(out, dim=(-2, -1), norm='ortho')
         # data_consistency x_res - min: 5.820766091346741e-11
         # data_consistency x_res - max: 0.07881709188222885
         # data_consistency x_res - mean: 0.0012523188488557935
@@ -438,6 +445,7 @@ class KspaceFillNeighbourLayer(nn.Module):
         self.op = get_add_neighbour_op(2, frame_dist, divide_by_n, clipped)
 
     def forward(self, *input, **kwargs):
+        print('KspaceFillNeighbourLayer----')
         return self.perform(*input)
 
     def perform(self, k, mask):
@@ -523,6 +531,7 @@ class AveragingInKspace(nn.Module):
         self.kavg = KspaceFillNeighbourLayer(frame_dist, divide_by_n, clipped)
 
     def forward(self, *input, **kwargs):
+        print('AveragingInKspace-----')
         return self.perform(*input)
 
     def perform(self, x, mask):
@@ -530,10 +539,14 @@ class AveragingInKspace(nn.Module):
         x    - input in image space, shape (n, 2, nx, ny, nt)
         mask - corresponding nonzero location
         """
+       
         mask = mask.permute(0, 1, 4, 2, 3)
 
         x = x.permute(0, 4, 2, 3, 1) # put t to front, in convenience for fft
-        k = torch.fft(x, 2, normalized=self.normalized)
+        print('AveragingInKspace-x-shape:',x.shape)
+        print('AveragingInKspace-mask-shape:',mask.shape)
+        # k = torch.fft(x, 2, normalized=self.normalized)
+        k = torch.fft.fft2(x, dim=(-3, -2), norm='ortho' if self.normalized else 'backward')
         k = k.permute(0, 4, 1, 2, 3) # then put ri to the front, then t
 
         # data sharing
@@ -546,7 +559,9 @@ class AveragingInKspace(nn.Module):
         # out.shape: [nb, 2*len(frame_dist), nt, nx, ny]
         # we then detatch confused real/img channel and replica kspace channel due to datasharing (nc)
         out = out.permute(0,1,3,4,5,2) # jo version, split ri and nc, put ri to the back for ifft
-        x_res = torch.ifft(out, 2, normalized=self.normalized)
+        # x_res = torch.ifft(out, 2, normalized=self.normalized)
+        # x_res shape: (n, nt, nx, ny, 2)
+        x_res = torch.fft.ifft2(out, dim=(-3, -2), norm='ortho' if self.normalized else 'backward')
 
 
         # now nb, nc, nt, nx, ny, ri, put ri to channel position, and after nc (i.e. within each nc)
