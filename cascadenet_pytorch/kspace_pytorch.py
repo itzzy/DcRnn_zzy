@@ -29,9 +29,12 @@ def kspace_to_image(k_space):
     # print('kspace_to_image-k_space-shape:',k_space.shape)
     # 在最后两个维度（height 和 width）进行逆傅里叶变换
     # image = np.fft.ifft2(k_space, axes=(-2, -1))
-    image = np.fft.ifft2(k_space, axes=(-3, -2),norm='ortho')
-    # 取幅值（可选，也可以取实部或虚部）
-    image = np.abs(image)
+    # image = np.fft.ifft2(k_space, axes=(-3, -2),norm='ortho')
+    # # 取幅值（可选，也可以取实部或虚部）
+    # image = np.abs(image)
+    k_undersample_complex = k_space[0, 0, :, :, 0] + 1j * k_space[0, 1, :, :, 0]
+    image_from_k_space = np.fft.ifft2(k_undersample_complex)
+    image = np.abs(image_from_k_space)
     return image
 
 # def save_data(data, save_dir, prefix, data_name):
@@ -189,6 +192,8 @@ def save_k_space_data(k, k0, mask, save_dir, prefix=''):
     np.save(os.path.join(save_dir, f'{prefix}mask.npy'), mask_np)
     savemat(os.path.join(save_dir, f'{prefix}mask.mat'), {'mask': mask_np})
     
+    print('save_k_space_data-k-shape:',k_np.shape)
+    print('save_k_space_data-k0-shape:',k0_np.shape)
     # 将 k-space 数据转换到图像域
     k_image = kspace_to_image(k_np)
     k0_image = kspace_to_image(k0_np)
@@ -305,6 +310,7 @@ class DataConsistencyInKspace(nn.Module):
         return self.perform(*input)
 
     # def perform(self, x, k0, mask):
+    # net['t%d_out' % i] = self.dcs[i - 1].perform(net['t%d_out' % i], k, m, save_last=save_last)
     def perform(self, x, k0, mask, save_last=False):
         """
         x    - input in image domain, of shape (n, 2, nx, ny[, nt])
@@ -322,13 +328,14 @@ class DataConsistencyInKspace(nn.Module):
             mask = mask.permute(0, 4, 2, 3, 1)
         #DataConsistencyInKspace-perform-x-shape: torch.Size([1, 30, 256, 256, 2])
         # perform-x-dtype: torch.float32a
-        # print('DataConsistencyInKspace-perform-x-shape:',x.shape)
+        print('DataConsistencyInKspace-perform-x-shape:',x.shape)
+        print('DataConsistencyInKspace-perform-k0-shape:',k0.shape)
         # print('perform-x-dtype:',x.dtype)   
         # k = torch.fft(x, 2, normalized=self.normalized)
         # out = data_consistency(k, k0, mask, self.noise_lvl)
         # x_res = torch.ifft(out, 2, normalized=self.normalized)
         # 检查 save_dir 是否存在，如果不存在则创建
-        save_dir='./saved_data/0114_3'
+        save_dir='./saved_data/0114_4'
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
         # k = torch.fft.fft2(x, dim=(-2, -1), normalized=self.normalized)
