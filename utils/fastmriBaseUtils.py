@@ -1098,12 +1098,12 @@ def Emat_xyt_complex(b, inv, csm, mask):
 
 
 # 定义r2c函数，用于将实数张量转换为复数张量 x:[1,30,320,320]
-# def r2c(x):
-#     if isinstance(x, np.ndarray):
-#         x = torch.from_numpy(x)  # 将numpy.ndarray转换为Tensor
-#     re, im = torch.chunk(x, 2, 1)  # 将输入沿通道维度分为实部和虚部
-#     x = torch.complex(re, im)  # 创建复数张量
-#     return x
+def r2c(x):
+    if isinstance(x, np.ndarray):
+        x = torch.from_numpy(x)  # 将numpy.ndarray转换为Tensor
+    re, im = torch.chunk(x, 2, 1)  # 将输入沿通道维度分为实部和虚部
+    x = torch.complex(re, im)  # 创建复数张量
+    return x
 '''
 解释
 1. 输入检查：首先检查输入是否为 numpy.ndarray，如果是，则将其转换为 torch.Tensor。
@@ -1116,21 +1116,21 @@ im：取后15个通道作为虚部。
 输出
 经过这个修改后的 r2c 函数处理后，返回的复数张量的维度将保持为 [1, 30, 320, 320]，并且包含了实部和虚部的信息。
 '''
-def r2c(x):
-    if isinstance(x, np.ndarray):
-        x = torch.from_numpy(x)  # 将numpy.ndarray转换为Tensor
+# def r2c(x):
+#     if isinstance(x, np.ndarray):
+#         x = torch.from_numpy(x)  # 将numpy.ndarray转换为Tensor
     
-    # 假设输入的 x 是 [1, 30, 320, 320]
-    # 将前15个通道作为实部，后15个通道作为虚部
-    re = x[:, :15, :, :]  # 取前15个通道作为实部
-    im = x[:, 15:, :, :]  # 取后15个通道作为虚部
+#     # 假设输入的 x 是 [1, 30, 320, 320]
+#     # 将前15个通道作为实部，后15个通道作为虚部
+#     re = x[:, :15, :, :]  # 取前15个通道作为实部
+#     im = x[:, 15:, :, :]  # 取后15个通道作为虚部
     
-    # 创建复数张量，保持通道数为30
-    x = torch.zeros(x.shape, dtype=torch.complex64)  # 创建一个复数张量，维度为 [1, 30, 320, 320]
-    x[:, :15, :, :] = re  # 将实部放入前15个通道
-    x[:, 15:, :, :] = im  # 将虚部放入后15个通道
+#     # 创建复数张量，保持通道数为30
+#     x = torch.zeros(x.shape, dtype=torch.complex64)  # 创建一个复数张量，维度为 [1, 30, 320, 320]
+#     x[:, :15, :, :] = re  # 将实部放入前15个通道
+#     x[:, 15:, :, :] = im  # 将虚部放入后15个通道
     
-    return x
+#     return x
 
 
 # # 定义c2r函数，用于将复数张量转换为实数张量

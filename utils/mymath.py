@@ -28,7 +28,7 @@ def fft2c(x,norm='ortho'):
     # axes = (-3, -2)  # 对 height 和 width 进行操作
     # res = fftshift(fft2(ifftshift(x, axes=axes), norm='ortho'), axes=axes)
     # res = fftshift(fft2(ifftshift(x, axes=axes), norm), axes=axes)
-    # 只对最后两个轴进行 ifftshift 和 fftshift
+    # 只对最后两个轴进行 ifftshift 和 fftshift  在傅里叶变换和逆傅里叶变换前都要进行ifftshift和fftshift
     res = np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(x, axes=axes), norm=norm), axes=axes)
     return res
 

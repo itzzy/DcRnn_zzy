@@ -11,10 +11,16 @@ def ifft2(X, dim=(-2,-1)):
 
 def fft2c(x, dim=(-2,-1)):
     return torch.fft.fftshift(fft2(torch.fft.ifftshift(x, dim), dim), dim)
+   
 
+def fft2c_image_to_kspace(x, dim=(-2,-1)):
+    return torch.fft.fftshift(fft2(x, dim), dim)
 
 def ifft2c(x, dim=(-2,-1)):
     return torch.fft.fftshift(ifft2(torch.fft.ifftshift(x, dim), dim), dim)
+
+def ifft2c_kspace_to_image(x, dim=(-2,-1)):
+    return ifft2(torch.fft.ifftshift(x, dim), dim)
 
 
 class MulticoilForwardOp(torch.nn.Module):

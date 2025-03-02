@@ -52,13 +52,7 @@ def prep_input(im, acc=4.0,centred=False):
                         higher the value, more undersampling
     """
     # mask = cs.cartesian_mask(im.shape, acc, sample_n=8)
-    # mask = cs.cartesian_mask(im.shape, acc, sample_n=8,centred=centred)
-    print('prep_input-centred',centred)
-    acc = int(acc)
-    #尝试另外一个mask
-    mask = cs.shear_grid_mask(im.shape[1:], acc, sample_low_freq=True, sample_n=4)
-    mask = np.repeat(mask[np.newaxis], im.shape[0], axis=0)
-    
+    mask = cs.cartesian_mask(im.shape, acc, sample_n=8,centred=centred)
     # prep_input-mask-dtype: float64
     # print('prep_input-mask-dtype:',mask.dtype)
     # print('prep_input-im-shape:',im.shape) #prep_input-im-shape: (1, 30, 256, 256)
@@ -102,16 +96,16 @@ def create_dummy_data():
 
     """
     data = loadmat(join(project_root, './data/cardiac.mat'))['seq']
-    nx, ny, nt = data.shape  # 原始数据形状:  [256, 256, 30]
+    nx, ny, nt = data.shape  # 原始数据形状: [30, 256, 256]
     
     # 转置数据，将时间维度放在最前面
-    data_t = np.transpose(data, (2, 0, 1))  # 转置后形状: [30, 256, 256]
+    data_t = np.transpose(data, (2, 0, 1))  # 转置后形状: [256, 256, 30]
     
     # 生成训练集、验证集和测试集
     # 保持后两个维度为 [256, 256]，仅从时间维度切片
-    train = np.array([data_t for _ in range(20)])  # 训练集: [20, 30, 256, 256]
-    validate = np.array([data_t for _ in range(2)])  # 验证集: [2, 30, 256, 256]
-    test = np.array([data_t for _ in range(2)])  # 测试集: [2, 30, 256, 256]
+    train = np.array([data_t for _ in range(20)])  # 训练集: [20, 256, 256, 30]
+    validate = np.array([data_t for _ in range(2)])  # 验证集: [2, 256, 256, 30]
+    test = np.array([data_t for _ in range(2)])  # 测试集: [2, 256, 256, 30]
 
     return train, validate, test
 
@@ -120,9 +114,7 @@ def create_dummy_data():
 # nohup python main_crnn_test.py --acceleration_factor 4 > output_0112_2.log 2>&1 &
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    # parser.add_argument('--num_epoch', metavar='int', nargs=1, default=['1'],
-    #                     help='number of epochs')
-    parser.add_argument('--num_epoch', metavar='int', nargs=1, default=['300'],
+    parser.add_argument('--num_epoch', metavar='int', nargs=1, default=['1'],
                         help='number of epochs')
     # parser.add_argument('--num_epoch', metavar='int', nargs=1, default=['400'],
     #                     help='number of epochs')
@@ -152,9 +144,9 @@ if __name__ == '__main__':
         torch.cuda.set_device(0)
 
     # Project config
-    model_name = 'crnn_mri_0224_kspace_center_8'
+    model_name = 'crnn_mri_0220_kspace_center_1'
     # 模型中间结果保存位置
-    model_save_dir = './saved_data/0224_8'
+    model_save_dir = './saved_data/0220_1'
     acc = float(args.acceleration_factor[0])  # undersampling rate
     num_epoch = int(args.num_epoch[0])
     batch_size = int(args.batch_size[0])
@@ -174,9 +166,9 @@ if __name__ == '__main__':
 
     # Create dataset
     train, validate, test = create_dummy_data()
-    # data_shape = [Nx, Ny, Nt]
+    data_shape = [Nx, Ny, Nt]
     # Test creating mask and compute the acceleration rate
-    # dummy_mask = cs.cartesian_mask(data_shape, acc, sample_n=8)
+    dummy_mask = cs.cartesian_mask(data_shape, acc, sample_n=8)
     # dummy_mask = cs.cartesian_mask((10, Nx, Ny//Ny_red), acc, sample_n=8)
     # sample_und_factor = cs.undersampling_rate(dummy_mask)
     # # Undersampling Rate: 0.25
@@ -205,7 +197,6 @@ if __name__ == '__main__':
         rec_net = rec_net.cuda()
         criterion.cuda()
 
-    centred = False
     i = 0
     # 定义梯度累积的步数
     accumulation_steps = 4  # 可以根据显存大小调整
@@ -221,7 +212,159 @@ if __name__ == '__main__':
         total_batches_train = len(train) // batch_size
         total_batches_validate = len(validate) // batch_size
         total_batches_test = len(test) // batch_size
-               
+        
+        # for im in iterate_minibatch(train, batch_size, shuffle=True):
+        #     '''
+        #     im_und: 欠采样的图像数据，大小 [4, 2, 256, 32, 30]。
+        #     k_und: 欠采样的 k 空间 数据，大小与 im_und 相同。
+        #     mask: 欠采样的 k 空间掩码，用于指定哪些位置被采样。
+        #     im_gnd: 原始（完整）的图像数据，作为重建的参考标准。
+        #     '''
+        #     # print('im-shape:',im.shape) im-shape: (4, 30, 256, 32)
+        #     # print('im-dtype:',im.dtype) im-dtype: complex64
+        #     # im_und, k_und, mask, im_gnd = prep_input(im, acc)
+        #     im_undersample, k_undersample, mask, im_groudtruth = prep_input(im, acc)
+
+        #     '''
+        #     各个维度的含义
+        #     Batch size (第1维): 4
+        #     表示当前输入是一个批量数据，其中包含 4 个样本。
+        #     这是由 batch_size=4 设置决定的。
+        #     Channels (第2维): 2
+        #     表示数据具有两个通道，可能是 MRI 数据的复数表示。
+        #     通道 1 表示实部，通道 2 表示虚部。
+        #     Height (第3维): 256
+        #     表示 MRI 图像在空间维度上的高度，通常是图像的垂直像素数。
+        #     Width (第4维): 256
+        #     表示图像在宽度方向上的压缩采样（子采样后的宽度）。
+        #     Temporal frames (第5维): 30
+        #     表示时间维度的帧数，即动态 MRI 的时间帧（或序列长度）。
+        #     '''
+        #     # print('im_und-shape:',im_und.shape)  #im_und-shape: torch.Size([4, 2, 256, 32, 30])
+        #     # print('k_und-shape:',k_und.shape) #k_und-shape: torch.Size([4, 2, 256, 32, 30])
+        #     # print('mask-shape:',mask.shape) # mask-shape: torch.Size([4, 2, 256, 32, 30])
+        #     # print('im_gnd-shape:',im_gnd.shape) im_gnd-shape: torch.Size([4, 2, 256, 32, 30])
+        #     '''
+        #     im_und-dtype: torch.float64
+        #     k_und:-dtype: torch.float64
+        #     mask-dtype: torch.float32
+        #     im_gnd-dtype: torch.float32
+        #     '''
+        #     # print('im_und-dtype:',im_und.dtype)
+        #     # print('k_und:-dtype:',k_und.dtype)
+        #     # print('mask-dtype:',mask.dtype)
+        #     # print('im_gnd-dtype:',im_gnd.dtype)
+        #     # im_undersample, k_undersample, mask, im_groudtruth = prep_input(im, acc)
+        #     # im_u = Variable(im_und.type(Tensor))
+        #     # k_u = Variable(k_und.type(Tensor))
+        #     # mask = Variable(mask.type(Tensor))
+        #     # gnd = Variable(im_gnd.type(Tensor))
+        #     im_undersample = Variable(im_undersample.type(Tensor))
+        #     k_undersample = Variable(k_undersample.type(Tensor))
+        #     mask = Variable(mask.type(Tensor))
+        #     groudtruth = Variable(im_groudtruth.type(Tensor))
+        #     # im_u = im_u[..., :5]  # 只取前 10 帧
+        #     # k_u = k_u[..., :5]
+        #     # mask = mask[..., :5]
+        #     # gnd = gnd[..., :5]
+            
+        #     # 在训练循环中，添加以下代码
+        #     # if epoch == 0 and train_batches == 0:  # 只在第一个 batch 的第一个 epoch 保存
+        #     #     # 将 Tensor 转换为 numpy 数组
+        #     #     im_u_np = im_u.cpu().numpy()
+        #     #     k_u_np = k_u.cpu().numpy()
+        #     #     mask_np = mask.cpu().numpy()
+
+        #         # 保存为 .mat 格式
+        #         # savemat(join(save_dir, 'im_u.mat'), {'im_u': im_u_np})
+        #         # savemat(join(save_dir, 'k_u.mat'), {'k_u': k_u_np})
+        #         # savemat(join(save_dir, 'mask.mat'), {'mask': mask_np})
+
+        #         # # 保存为 .npy 格式
+        #         # np.save(join(save_dir, 'im_u.npy'), im_u_np)
+        #         # np.save(join(save_dir, 'k_u.npy'), k_u_np)
+        #         # np.save(join(save_dir, 'mask.npy'), mask_np)
+
+        #         # # 保存为图片
+        #         # plt.imsave(join(save_dir, 'im_u.png'), np.abs(im_u_np[0, 0, :, :, 0]), cmap='gray')
+        #         # plt.imsave(join(save_dir, 'k_u.png'), np.abs(k_u_np[0, 0, :, :, 0]), cmap='gray')
+        #         # plt.imsave(join(save_dir, 'mask.png'), np.abs(mask_np[0, 0, :, :, 0]), cmap='gray')
+
+        #         # print(f"Saved im_u, k_u, and mask to {save_dir}")
+            
+        #     # im_u-dtype: torch.float32
+        #     # k_u:-dtype: torch.float32
+        #     # mask-dtype: torch.float32
+        #     # gnd-dtype: torch.float32
+        #     # print('im_u-dtype:',im_u.dtype)
+        #     # print('k_u:-dtype:',k_u.dtype)
+        #     # print('mask-dtype:',mask.dtype)
+        #     # print('gnd-dtype:',gnd.dtype)
+
+        #     # optimizer.zero_grad()
+        #     # rec = rec_net(im_u, k_u, mask, test=False)
+        #     # # main_crnn-rec torch.Size([1, 2, 256, 32, 30])
+        #     # # main_crnn-rec-dtype: torch.float32
+        #     # print('main_crnn-rec', rec.shape)
+        #     # print('main_crnn-rec-dtype:', rec.dtype)
+        #     # # print('main_crnn-rec:',rec.dtype)  # 检查输入数据类型
+        #     # # print('main_crnn-rec:',rec.shape)  # 检查输入数据类型
+        #     # loss = criterion(rec, gnd)
+        #     # loss.backward()
+        #     # optimizer.step()
+        #     # 前向传播
+        #     # with autocast():
+        #     optimizer.zero_grad()
+        #     # im_undersample, k_undersample, mask, im_groudtruth = prep_input(im, acc)
+        #     with autocast('cuda'):  # 修改此处
+        #         # rec = rec_net(im_u, k_u, mask, test=False)
+        #         rec = rec_net(im_undersample, k_undersample, mask, test=False)
+        #         print(rec.requires_grad)  # 应该为 True
+        #         # loss = criterion(rec, gnd)
+        #         loss = criterion(rec, groudtruth)
+        #     # torch.cuda.empty_cache()
+        #     # 反向传播（累积梯度）
+        #     scaler.scale(loss).backward()
+        #     # 每 accumulation_steps 步更新一次模型参数
+        #     # if (i + 1) % accumulation_steps == 0:
+        #     #     # 更新模型参数
+        #     #     scaler.step(optimizer)
+        #     #     scaler.update()
+        #     #     optimizer.zero_grad()  # 清空梯度
+
+        #     #     # 记录训练损失
+        #     #     train_err += loss.item()
+        #     #     train_batches += 1
+        #     #     writer.add_scalar('Loss/Train', loss.item(), epoch * len(train) + train_batches)
+        #     # 更新模型参数
+        #     scaler.step(optimizer)
+        #     scaler.update()
+        #     # optimizer.zero_grad()  # 清空梯度
+
+        #         # 记录训练损失
+        #     train_err += loss.item()
+        #     train_batches += 1
+        #     writer.add_scalar('Loss/Train', loss.item(), epoch * len(train) + train_batches)
+
+        #     # scaler.step(optimizer)
+        #     # scaler.update()
+            
+        #     # 释放内存
+        #     torch.cuda.empty_cache()
+        #     # 可以考虑添加 del 关键字删除不再使用的张量
+        #     del im_u, k_u, mask, gnd, rec, loss
+
+        #     # train_err += loss.item()
+        #     # train_batches += 1
+        #     # # 记录训练损失
+        #     # writer.add_scalar('Loss/Train', loss.item(), epoch * len(train) + train_batches)
+
+        #     # if args.debug and train_batches == 20:
+        #     if args.debug and train_batches == 50:
+        #         break
+        # # 记录每个 epoch 的平均训练损失
+        # writer.add_scalar('Loss/Train_Avg', train_err / train_batches, epoch)
+        
         for batch_idx, im in enumerate(iterate_minibatch(train, batch_size, shuffle=True)):
             # 检查是否是最后一个 epoch 的最后一个 batch
             is_last_epoch = (epoch == num_epoch - 1)
@@ -229,21 +372,13 @@ if __name__ == '__main__':
             save_last = is_last_epoch and is_last_batch
 
             # 数据预处理
-            # im_undersample, k_undersample, mask, im_groudtruth = prep_input(im, acc,centred=False)
-            im_undersample, k_undersample, mask, im_groudtruth = prep_input(im, acc,centred=centred)
+            im_undersample, k_undersample, mask, im_groudtruth = prep_input(im, acc,centred=False)
+
             # 转换为 PyTorch 变量
             im_undersample = Variable(im_undersample.type(Tensor))
             k_undersample = Variable(k_undersample.type(Tensor))
             mask = Variable(mask.type(Tensor))
             groudtruth = Variable(im_groudtruth.type(Tensor))
-            # print('im_undersample-shape:',im_undersample.shape) #torch.Size([1, 2, 256, 256, 30])
-            # print('im_undersample-dtype:',im_undersample.dtype) #torch.float32
-            # print('k_undersample-shape:',k_undersample.shape) #torch.Size([1, 2, 256, 256, 30])
-            # print('k_undersample-dtype:',k_undersample.dtype) #torch.float32
-            # print('mask-shape:',mask.shape) #torch.Size([1, 2, 256, 256, 30])
-            # print('mask-dtype:',mask.dtype) #float32
-            # print('groudtruth-shape:',groudtruth.shape) #torch.Size([1, 2, 256, 256, 30])
-            # print('groudtruth-dtype:',groudtruth.dtype) #torch.float32
 
             # 前向传播
             optimizer.zero_grad()
@@ -264,21 +399,11 @@ if __name__ == '__main__':
             # 保存最后一个 epoch 和最后一个 batch 的数据
             if save_last:
                 # 将 Tensor 转换为 numpy 数组
-                # 调整维度，让最后一个维度的大小为 2
-                im_undersample_permuted = im_undersample.permute(0, 4, 2, 3, 1)
-                print('调整后 im_undersample 形状:', im_undersample_permuted.shape) #调整后 im_undersample 形状: torch.Size([1, 30, 256, 256, 2])
-                im_undersample_complex  = torch.view_as_complex(im_undersample_permuted.contiguous())
-                im_undersample_np = im_undersample_complex.cpu().numpy()
-                print('im_undersample_np-shape:',im_undersample_np.shape) #im_undersample_np-shape: (1, 30, 256, 256)
+                im_undersample_np = im_undersample.cpu().numpy()
                 k_undersample_np = k_undersample.cpu().numpy()
-                print('k_undersample_np-shape:',k_undersample_np.shape) #k_undersample_np-shape: (1, 2, 256, 256, 30)
+                print('k_undersample_np-shape:',k_undersample_np.shape)
                 mask_np = mask.cpu().numpy()
                 groudtruth_np = groudtruth.cpu().numpy()
-                
-                # print('train-im_undersample-shape:',im_undersample_np.shape) #train-im_undersample-shape: (1, 2, 256, 256, 30)
-                # print('train-k_undersample-shape:',k_undersample_np.shape) #train-k_undersample-shape: (1, 2, 256, 256, 30)
-                # print('train-mask-shape:',mask_np.shape) #train-mask-shape: (1, 2, 256, 256, 30)
-                # print('train-im_groudtruth-shape:',groudtruth_np.shape) #train-im_groudtruth-shape: (1, 2, 256, 256, 30)
 
                 # 创建 train_output 子目录
                 train_output_dir = join(save_dir, 'train_output')
@@ -297,8 +422,7 @@ if __name__ == '__main__':
                 np.save(join(train_output_dir, 'groudtruth.npy'), groudtruth_np)
 
                 # 保存为 .png 格式
-                # plt.imsave(join(train_output_dir, 'im_undersample.png'), np.abs(im_undersample_np[0, 0, :, :, 0]), cmap='gray')
-                plt.imsave(join(train_output_dir, 'im_undersample.png'), np.abs(im_undersample_np[0, 0, :, :]), cmap='gray')
+                plt.imsave(join(train_output_dir, 'im_undersample.png'), np.abs(im_undersample_np[0, 0, :, :, 0]), cmap='gray')
                 plt.imsave(join(train_output_dir, 'mask.png'), np.abs(mask_np[0, 0, :, :, 0]), cmap='gray')
                 plt.imsave(join(train_output_dir, 'groudtruth.png'), np.abs(groudtruth_np[0, 0, :, :, 0]), cmap='gray')
 
@@ -325,8 +449,7 @@ if __name__ == '__main__':
         # for im in iterate_minibatch(validate, batch_size, shuffle=False):
         for batch_idx, im in enumerate(iterate_minibatch(validate, batch_size, shuffle=False)):
             # im_und, k_und, mask, im_gnd = prep_input(im, acc)
-            # im_und, k_und, mask, im_gnd = prep_input(im, acc,centred=False)
-            im_und, k_und, mask, im_gnd = prep_input(im, acc,centred=centred)
+            im_und, k_und, mask, im_gnd = prep_input(im, acc,centred=False)
             # 检查是否是最后一个 epoch 的最后一个 batch
             is_last_epoch = (epoch == num_epoch - 1)
             is_last_batch = (batch_idx == total_batches_validate - 1)
@@ -363,8 +486,7 @@ if __name__ == '__main__':
         # for im in iterate_minibatch(test, batch_size, shuffle=False):
         for batch_idx, im in enumerate(iterate_minibatch(test, batch_size, shuffle=True)):
             # im_und, k_und, mask, im_gnd = prep_input(im, acc)
-            # im_und, k_und, mask, im_gnd = prep_input(im, acc,centred=False)
-            im_und, k_und, mask, im_gnd = prep_input(im, acc,centred=centred)
+            im_und, k_und, mask, im_gnd = prep_input(im, acc,centred=False)
             with torch.no_grad():
                 im_u = Variable(im_und.type(Tensor))
                 k_u = Variable(k_und.type(Tensor))
@@ -378,7 +500,6 @@ if __name__ == '__main__':
                 print('iterate_minibatch-test-save_last:',save_last)
                 # pred = rec_net(im_u, k_u, mask, test=True)
                 pred = rec_net(im_u, k_u, mask, test=True, model_save_dir =model_save_dir ,save_last=save_last)
-                print('pred-shape:',pred.shape)
             # torch.cuda.empty_cache()
             
             # 

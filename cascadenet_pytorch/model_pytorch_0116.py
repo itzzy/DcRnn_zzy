@@ -542,7 +542,6 @@ class CRNN_MRI(nn.Module):
         self.dcs = dcs
 
     # def forward(self, x, k, m, test=False):
-    # rec = rec_net(im_u, k_u, mask, test=False)
     def forward(self, x, k, m, test=False, model_save_dir=False,save_last=False):
         """
         x   - input in image domain, of shape (n, 2, nx, ny, n_seq)
