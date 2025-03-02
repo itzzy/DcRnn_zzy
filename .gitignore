@@ -190,3 +190,5 @@ saved_data/
 log_*
 output_*
 README.rst
+nohup.outnohup.out
+*.png
