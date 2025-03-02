@@ -376,7 +376,8 @@ class DataConsistencyInKspace(nn.Module):
         k0   - initially sampled elements in k-space
         mask - corresponding nonzero location
         """
-
+        # print('perform-x-shape-1:',x.shape) #perform-x-shape-1: torch.Size([1, 2, 256, 256, 30])
+        # print('perform-k0-shape-1:',k0.shape) #perform-k0-shape-1: torch.Size([1, 2, 256, 256, 30])
         if x.dim() == 4: # input is 2D
             x    = x.permute(0, 2, 3, 1)
             k0   = k0.permute(0, 2, 3, 1)
@@ -402,7 +403,18 @@ class DataConsistencyInKspace(nn.Module):
         # k = torch.fft.fft2(x, dim=(-2, -1), normalized=self.normalized)
         # k = torch.fft.fft2(x, dim=(-2, -1), norm='forward')
         # k = torch.fft.fft2(x, dim=(-3, -2), norm='forward')
+        x_complex = torch.view_as_complex(x.contiguous())
+        k0_complex = torch.view_as_complex(k0.contiguous())
+        mask_complex = torch.view_as_complex(mask.contiguous())
         # 正向傅里叶变换
+        # k = torch.fft.fft2(x, dim=(-2, -1), norm='ortho')
+        dim=(-2, -1)
+        k_x_complex = torch.fft.fft2(x_complex, dim=dim, norm='ortho')
+        # 将kspace从四个角移动到中心
+        k_x_complex = torch.fft.ifftshift(k_x_complex, dim)
+        k0_complex = torch.fft.ifftshift(k0_complex, dim)
+        mask_complex = torch.fft.ifftshift(mask_complex, dim)
+        # k = torch.fft(x, 2, normalized=self.normalized)
         # k = torch.fft.fft2(x, dim=(-2, -1), norm='ortho')
         # k = torch.fft.fft2(x, dim=(-3, -2), norm='ortho')
         # k shape: (n, nt, nx, ny, 2)
@@ -492,6 +504,8 @@ class DataConsistencyInKspace(nn.Module):
         # out = data_consistency(k, k0, mask, self.noise_lvl)
         # out = data_consistency(k, k0, mask, self.noise_lvl,'./main_crnn_test','crnn0111')
         # x_res = torch.fft.ifft2(out, dim=(-2, -1), norm='backward')
+        # out = data_consistency(k, k0, mask, self.noise_lvl, save_dir=save_dir, prefix='last_epoch_', save_last=save_last)
+        out = data_consistency(k_x_complex, k0_complex, mask_complex, self.noise_lvl, save_dir=save_dir, prefix='last_epoch_', save_last=save_last)
         # out = data_consistency(x_recon_tensor, k0, mask, self.noise_lvl, save_dir=save_dir, prefix=prefix, save_last=save_last)
         # out = data_consistency(k, k0, mask, self.noise_lvl, save_dir=model_save_dir, prefix=prefix, save_last=save_last)
         # print('out-dtype:',out.dtype) out-dtype: torch.complex64
@@ -517,6 +531,8 @@ class DataConsistencyInKspace(nn.Module):
         # x_res = torch.fft.ifft2(out, dim=(-2, -1), norm='backward')
         # 逆傅里叶变换
         # x_res = torch.fft.ifft2(out, dim=(-3, -2), norm='ortho')
+        x_res = torch.fft.ifft2(out, dim=(-2, -1), norm='ortho')
+        x_res = torch.view_as_real(x_res)
         # x_res shape: (n, nt, nx, ny, 2)
         # x_res = torch.fft.ifft2(out, dim=(-3, -2), norm='ortho' if self.normalized else 'backward')
         

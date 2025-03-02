@@ -31,16 +31,36 @@ from cascadenet_pytorch.dnn_io import from_tensor_format
 # 导入 TensorBoard 模块
 from torch.utils.tensorboard import SummaryWriter
 
+# # PyTorch建议在使用多线程时设置OMP_NUM_THREADS环境变量，以避免系统过载。
+# os.environ['OMP_NUM_THREADS'] = '1'
+# # 设置PYTORCH_CUDA_ALLOC_CONF环境变量，以减少CUDA内存碎片
+# os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+# # os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
+# # os.environ["CUDA_VISIBLE_DEVICES"] = "3" #,0,1,2,4,5,6,7
+# # os.environ['CUDA_VISIBLE_DEVICES'] = '1'  # 指定使用 GPU 1 和 GPU 4
+# # os.environ['CUDA_VISIBLE_DEVICES'] = '6'  # 指定使用 GPU 1 和 GPU 4
+# # os.environ['CUDA_VISIBLE_DEVICES'] = '4'  # 指定使用 GPU 1 和 GPU 4
+# os.environ['CUDA_VISIBLE_DEVICES'] = '5'  # 指定使用 GPU 1 和 GPU 4
+
+# # 设置环境变量 CUDA_VISIBLE_DEVICES  0-5(nvidia--os) 2-6 3-7
+# # os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'  # 指定使用 GPU 1 和 GPU 4
+# # os.environ['CUDA_VISIBLE_DEVICES'] = '4,7'  # 指定使用 GPU 7 和 GPU 3
+# # os.environ['CUDA_VISIBLE_DEVICES'] = '1,4'  # 指定使用 GPU 4 和 GPU 7
+# # os.environ['CUDA_VISIBLE_DEVICES'] = '1,4'  # 指定使用 GPU 4 和 GPU 7
+# # os.environ['CUDA_VISIBLE_DEVICES'] = '1,3'  # 指定使用 GPU 4 和 GPU 6
+# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # PyTorch建议在使用多线程时设置OMP_NUM_THREADS环境变量，以避免系统过载。
 os.environ['OMP_NUM_THREADS'] = '1'
 # 设置PYTORCH_CUDA_ALLOC_CONF环境变量，以减少CUDA内存碎片
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
 # os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
 # os.environ["CUDA_VISIBLE_DEVICES"] = "3" #,0,1,2,4,5,6,7
 # os.environ['CUDA_VISIBLE_DEVICES'] = '1'  # 指定使用 GPU 1 和 GPU 4
 # os.environ['CUDA_VISIBLE_DEVICES'] = '6'  # 指定使用 GPU 1 和 GPU 4
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # 指定使用 GPU 1 和 GPU 4
 os.environ['CUDA_VISIBLE_DEVICES'] = '3'  # 指定使用 GPU 1 和 GPU 4
 
 def prep_input(im, acc=4.0,centred=False):
@@ -188,6 +208,10 @@ if __name__ == '__main__':
     rec_net = CRNN_MRI().cuda()
     # Parameter Count: 297794
     print("Parameter Count: %d" % count_parameters(rec_net))
+    
+    # 添加梯度裁剪（PyTorch示例）
+    torch.nn.utils.clip_grad_norm_(rec_net.parameters(), max_norm=1.0)
+    
     # 确保模型参数是 FP32
     rec_net.float()
 
