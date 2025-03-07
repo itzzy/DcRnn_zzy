@@ -42,7 +42,10 @@ def kspace_to_image_k(k_space):
     print('kspace_to_image-k_undersample_complex-shape-k:',k_undersample_complex.shape) # torch.Size([1, 30, 256, 256])
     print('kspace_to_image-k_undersample_complex-dtype-k:',k_undersample_complex.dtype) # torch.complex64
     # kspace_img = ifft2c(k_undersample_complex)
-    kspace_img = np.fft.ifft2(k_undersample_complex[0,0,:,:])
+    # kspace_img = np.fft.ifft2(k_undersample_complex[0,0,:,:])
+    
+    ###低频在中心
+    kspace_img = ifft2c_numpy(k_undersample_complex[0,0,:,:])
     ##这一步可能不对
     # dim=(-2,-1)
     # kspace_img_fftshift = torch.fft.fftshift(kspace_img, dim)
@@ -82,7 +85,11 @@ def kspace_to_image_k0(k_space):
     print('kspace_to_image-k_undersample_complex-shape:',k_undersample_complex.shape) # torch.Size([1, 30, 256, 256])
     print('kspace_to_image-k_undersample_complex-dtype:',k_undersample_complex.dtype) # torch.complex64
     # kspace_img = ifft2c(k_undersample_complex)
-    kspace_img = np.fft.ifft2(k_undersample_complex[0,0,:,:])
+    # kspace_img = np.fft.ifft2(k_undersample_complex[0,0,:,:])
+    
+    ###低频在中心
+    kspace_img = ifft2c_numpy(k_undersample_complex[0,0,:,:])
+    
     ##这一步可能不对
     # dim=(-2,-1)
     # kspace_img_fftshift = torch.fft.fftshift(kspace_img, dim)
@@ -429,7 +436,9 @@ class DataConsistencyInKspace(nn.Module):
         # x_kspace = fft2c(x_complex) fft2c_image_to_kspace函数中使用torch.fft.fftshift将kspace低频调整到中心
         # x_kspace_complex = fft2c_image_to_kspace(x_complex)
         # 2D FFT（保持低频在四角）
-        x_kspace_complex = torch.fft.fft2(x_complex, dim=(-2, -1), norm=self.norm)  # [batch, H, W]
+        # x_kspace_complex = torch.fft.fft2(x_complex, dim=(-2, -1), norm=self.norm)  # [batch, H, W]
+        ##kspace低频在中心
+        x_kspace_complex = fft2c(x_complex)
         
         #将k0中心化
         dim = (-2,-1)
@@ -490,7 +499,9 @@ class DataConsistencyInKspace(nn.Module):
         # out_complex = out
         # out_complex_img = ifft2c(out_complex)
         # 2D IFFT（保持低频在四角）
-        out_complex_img = torch.fft.ifft2(out, dim=(-2, -1), norm=self.norm)  # [batch, H, W]
+        # out_complex_img = torch.fft.ifft2(out, dim=(-2, -1), norm=self.norm)  # [batch, H, W]
+        ###低频在中心
+        out_complex_img = ifft2c(out)
         # k0_complex = torch.fft.fftshift(out_complex_img, dim)
         x_res = torch.view_as_real(out_complex_img)
         print('perform-x_res-shape:',x_res.shape) #perform-out-shape: torch.Size([1, 30, 256, 256, 2])

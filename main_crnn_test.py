@@ -255,8 +255,8 @@ if __name__ == '__main__':
         rec_net = rec_net.cuda()
         criterion.cuda()
 
-    centred = False
-    # centred = True
+    # centred = False
+    centred = True
     i = 0
     # 定义梯度累积的步数
     # accumulation_steps = 4  # 可以根据显存大小调整
@@ -450,7 +450,7 @@ if __name__ == '__main__':
                 # print('iterate_minibatch-test-save_last:',save_last)
                 # pred = rec_net(im_u, k_u, mask, test=True)
                 pred = rec_net(im_u, k_u, mask, test=True, model_save_dir =model_save_dir ,save_last=save_last)
-                print('pred-shape:',pred.shape) #torch.Size([1, 2, 256, 256, 30])
+                # print('pred-shape:',pred.shape) #torch.Size([1, 2, 256, 256, 30])
             # torch.cuda.empty_cache()
             
             # 
