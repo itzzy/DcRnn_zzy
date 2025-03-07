@@ -75,16 +75,15 @@ def prep_input(im, acc=4.0,centred=False):
                         higher the value, more undersampling
     """
     # mask = cs.cartesian_mask(im.shape, acc, sample_n=8)
-    mask = cs.cartesian_mask(im.shape, acc, sample_n=8,centred=centred)
+    # mask = cs.cartesian_mask(im.shape, acc, sample_n=8,centred=centred)
     # print('prep_input-centred',centred)
-    # acc = int(acc)
-    # #尝试另外一个mask
-    # mask = cs.shear_grid_mask(im.shape[1:], acc, sample_low_freq=True, sample_n=4)
-    # mask = np.repeat(mask[np.newaxis], im.shape[0], axis=0)
+    acc = int(acc)
+    #尝试另外一个mask
+    mask = cs.shear_grid_mask(im.shape[1:], acc, sample_low_freq=True, sample_n=4)
+    mask = np.repeat(mask[np.newaxis], im.shape[0], axis=0)
     
     # prep_input-mask-dtype: float64
-    # print('prep_input-mask-shape:',mask.shape) #prep_input-mask-shape: (1, 30, 256, 256)
-    # print('prep_input-mask-dtype:',mask.dtype) #prep_input-mask-dtype: float64
+    # print('prep_input-mask-dtype:',mask.dtype)
     # print('prep_input-im-shape:',im.shape) #prep_input-im-shape: (1, 30, 256, 256)
     # print('prep_input-mask-shape:',mask.shape)# prep_input-mask-shape: (1, 30, 256, 256)
     # im_und, k_und = cs.undersample(im, mask, centred=False, norm='ortho')
@@ -150,21 +149,11 @@ def create_dummy_data():
     return train, validate, test
 
 
-'''
-# 从头开始训练
+
 # nohup python main_crnn_test.py --acceleration_factor 4 > output_0112_2.log 2>&1 &
-python train.py --num_epoch 100 --lr 0.00001
-
-# 从第50个epoch恢复
-python train.py --resume models/crnn_mri_epoch_50.pth --num_epoch 100
-
-# 恢复后修改学习率
-python train.py --resume models/crnn_mri_epoch_50.pth --lr 0.000005
-'''
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--num_epoch', metavar='int', nargs=1, default=['50'],
+    parser.add_argument('--num_epoch', metavar='int', nargs=1, default=['1'],
                         help='number of epochs')
     # parser.add_argument('--num_epoch', metavar='int', nargs=1, default=['300'],
     #                     help='number of epochs')
@@ -174,18 +163,19 @@ if __name__ == '__main__':
     #                     help='batch size')
     parser.add_argument('--batch_size', metavar='int', nargs=1, default=['1'],
                         help='batch size')
-    # parser.add_argument('--lr', metavar='float', nargs=1,
-    #                     default=['0.00001'], help='initial learning rate')
     parser.add_argument('--lr', metavar='float', nargs=1,
-                        default=['0.00005'], help='initial learning rate')
+                        default=['0.000001'], help='initial learning rate')
+    # parser.add_argument('--lr', metavar='float', nargs=1,
+    #                     default=['0.00005'], help='initial learning rate')
     parser.add_argument('--acceleration_factor', metavar='float', nargs=1,
                         default=['4.0'],
                         help='Acceleration factor for k-space sampling')
     parser.add_argument('--debug', action='store_true', help='debug mode')
     parser.add_argument('--savefig', action='store_true',default='True',
                         help='Save output images and masks')
-    parser.add_argument('--resume', type=str, default=None,
-                    help='Path to checkpoint to resume training')
+    
+    
+    
 
     args = parser.parse_args()
     cuda = True if torch.cuda.is_available() else False
@@ -195,9 +185,9 @@ if __name__ == '__main__':
         torch.cuda.set_device(0)
 
     # Project config
-    model_name = 'crnn_mri_0307_kspace_center_5'
+    model_name = 'crnn_mri_0307_kspace_center_1'
     # 模型中间结果保存位置
-    model_save_dir = './saved_data/0307_5'
+    model_save_dir = './saved_data/0307_1'
     acc = float(args.acceleration_factor[0])  # undersampling rate
     num_epoch = int(args.num_epoch[0])
     batch_size = int(args.batch_size[0])
@@ -256,33 +246,12 @@ if __name__ == '__main__':
         criterion.cuda()
 
     centred = False
-    # centred = True
     i = 0
     # 定义梯度累积的步数
     # accumulation_steps = 4  # 可以根据显存大小调整
     # optimizer = optim.Adam(rec_net.parameters(), lr=float(args.lr[0]) * accumulation_steps, betas=(0.5, 0.999))
-    optimizer = optim.Adam(rec_net.parameters(), lr=float(args.lr[0]), betas=(0.9, 0.999))
-    
-    start_epoch = 0
-    best_loss = float('inf')
-    #检查点加载逻辑
-    if args.resume:
-        if os.path.isfile(args.resume):
-            print(f"=> Loading checkpoint '{args.resume}'")
-            checkpoint = torch.load(args.resume, map_location='cuda:0' if cuda else 'cpu')
-            start_epoch = checkpoint['epoch'] + 1
-            rec_net.load_state_dict(checkpoint['model_state_dict'])
-            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            scaler.load_state_dict(checkpoint['scaler_state_dict'])
-            best_loss = checkpoint.get('best_loss', best_loss)
-            print(f"=> Loaded checkpoint '{args.resume}' (epoch {checkpoint['epoch']})")
-            print(f"=> Current best loss: {best_loss:.4f}")
-        else:
-            print(f"=> No checkpoint found at '{args.resume}'")
-        
-    # for epoch in range(num_epoch):
-    # 修改训练循环范围
-    for epoch in range(start_epoch, num_epoch):
+    optimizer = optim.Adam(rec_net.parameters(), lr=float(args.lr[0]) * accumulation_steps, betas=(0.9, 0.999))
+    for epoch in range(num_epoch):
         t_start = time.time()
         # Training
         train_err = 0
@@ -518,31 +487,9 @@ if __name__ == '__main__':
         print(" test PSNR min:\t\t{:.6f}".format(np.min(test_psnr)))
         
         # save the model
-        # if epoch in [1, 2, num_epoch-1]:
-        #     if save_fig:
-
-        #         for im_i, pred_i, und_i, mask_i in vis:
-        #             # print('im_i---------')
-        #             im = abs(np.concatenate([und_i[0], pred_i[0], im_i[0], im_i[0] - pred_i[0]], 1))
-        #             plt.imsave(join(save_dir, 'im{0}_x.png'.format(i)), im, cmap='gray')
-
-        #             im = abs(np.concatenate([und_i[..., 0], pred_i[..., 0],
-        #                                      im_i[..., 0], im_i[..., 0] - pred_i[..., 0]], 0))
-        #             plt.imsave(join(save_dir, 'im{0}_t.png'.format(i)), im, cmap='gray')
-        #             plt.imsave(join(save_dir, 'mask{0}.png'.format(i)),
-        #                        np.fft.fftshift(mask_i[..., 0]), cmap='gray')
-        #             i += 1
-
-        #     name = '%s_epoch_%d.npz' % (model_name, epoch)
-        #     torch.save(rec_net.state_dict(), join(save_dir, name))
-        #     print('model parameters saved at %s' % join(os.getcwd(), name))
-            # print('')
-        
-        # 在原来的保存位置修改
-        # if epoch in [1, 2, num_epoch-1]:
-        # 在训练循环末尾，修改保存逻辑
-        if (epoch + 1) % 10 == 0 or epoch == num_epoch - 1:  # 每10个epoch或最后一个epoch保存
+        if epoch in [1, 2, num_epoch-1]:
             if save_fig:
+
                 for im_i, pred_i, und_i, mask_i in vis:
                     # print('im_i---------')
                     im = abs(np.concatenate([und_i[0], pred_i[0], im_i[0], im_i[0] - pred_i[0]], 1))
@@ -554,31 +501,10 @@ if __name__ == '__main__':
                     plt.imsave(join(save_dir, 'mask{0}.png'.format(i)),
                                np.fft.fftshift(mask_i[..., 0]), cmap='gray')
                     i += 1
-            checkpoint = {
-                'epoch': epoch,
-                'model_state_dict': rec_net.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'scaler_state_dict': scaler.state_dict(),
-                'best_loss': best_loss,
-                'train_loss': train_err,
-                'val_loss': validate_err,
-                'lr': optimizer.param_groups[0]['lr']
-            }
-            
-            # 生成带时间戳的文件名
-            save_name = f'{model_name}_epoch_{epoch+1}_{time.strftime("%Y%m%d-%H%M")}.pth'
-            save_path = join(save_dir, save_name)
-            
-            torch.save(checkpoint, save_path)
-            print(f"Checkpoint saved: {save_path}")
-            
-            # 清理旧检查点（保留最近3个）
-            # checkpoints = [f for f in os.listdir(save_dir) if f.endswith('.pth')]
-            # checkpoints.sort(key=lambda x: os.path.getmtime(join(save_dir, x)))
-            # if len(checkpoints) > 3:
-            #     for old_checkpoint in checkpoints[:-3]:
-            #         os.remove(join(save_dir, old_checkpoint))
-            #         print(f"Removed old checkpoint: {old_checkpoint}")
 
+            name = '%s_epoch_%d.npz' % (model_name, epoch)
+            torch.save(rec_net.state_dict(), join(save_dir, name))
+            print('model parameters saved at %s' % join(os.getcwd(), name))
+            # print('')
     # 训练结束后关闭 SummaryWriter
     writer.close()

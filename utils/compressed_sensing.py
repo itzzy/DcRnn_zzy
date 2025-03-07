@@ -197,8 +197,10 @@ centred：是否将掩码中心化（默认不中心化）。
 #     return mask_rep
 
 #来自: https://github.com/cq615/kt-Dynamic-MRI-Reconstruction/blob/master/utils/compressed_sensing.py#L5
+# def shear_grid_mask(shape, acceleration_rate, sample_low_freq=False,
+#                     centred=False, sample_n=4, test=False):
 def shear_grid_mask(shape, acceleration_rate, sample_low_freq=False,
-                    centred=False, sample_n=4, test=False):
+                    centred=False, sample_n=10, test=False):
     '''
     Creates undersampling mask which samples in sheer grid
 

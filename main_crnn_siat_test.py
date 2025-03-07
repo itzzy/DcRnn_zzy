@@ -19,17 +19,22 @@ from torch.cuda.amp import GradScaler
 from torch.amp import autocast
 import numpy as np
 
-
+from dataset.dataloader import CINE2DT as CINE2DT
+# from dataset.dataloader import CINE2DT_vista as CINE2DT
 from utils import compressed_sensing as cs
 from utils.metric import complex_psnr
 from utils.model_related import count_parameters
+from utils.mri_related import fft2c, MulticoilAdjointOp
 
 
-from cascadenet_pytorch.model_pytorch import *
+# from cascadenet_pytorch.model_pytorch import *
+from cascadenet_pytorch.model_pytorch_siat import *
 from cascadenet_pytorch.dnn_io import to_tensor_format
 from cascadenet_pytorch.dnn_io import from_tensor_format
 # 导入 TensorBoard 模块
 from torch.utils.tensorboard import SummaryWriter
+
+###使用我们的数据，我们的数据低频在中心
 
 # # PyTorch建议在使用多线程时设置OMP_NUM_THREADS环境变量，以避免系统过载。
 # os.environ['OMP_NUM_THREADS'] = '1'
@@ -40,10 +45,9 @@ from torch.utils.tensorboard import SummaryWriter
 # # os.environ['CUDA_VISIBLE_DEVICES'] = '1'  # 指定使用 GPU 1 和 GPU 4
 # # os.environ['CUDA_VISIBLE_DEVICES'] = '6'  # 指定使用 GPU 1 和 GPU 4
 # # os.environ['CUDA_VISIBLE_DEVICES'] = '4'  # 指定使用 GPU 1 和 GPU 4
-# os.environ['CUDA_VISIBLE_DEVICES'] = '5'  # 指定使用 GPU 1 和 GPU 4
+os.environ['CUDA_VISIBLE_DEVICES'] = '5'  # 指定使用 GPU 1 和 GPU 4
 
-# # 设置环境变量 CUDA_VISIBLE_DEVICES  0-5(nvidia--os) 2-6 3-7
-# # os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'  # 指定使用 GPU 1 和 GPU 4
+# 设置环境变量 CUDA_VISIBLE_DEVICES  0-1(nvidia--os) 3-6 4-7  5--0  6--2 7--3# # os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'  # 指定使用 GPU 1 和 GPU 4
 # # os.environ['CUDA_VISIBLE_DEVICES'] = '4,7'  # 指定使用 GPU 7 和 GPU 3
 # # os.environ['CUDA_VISIBLE_DEVICES'] = '1,4'  # 指定使用 GPU 4 和 GPU 7
 # # os.environ['CUDA_VISIBLE_DEVICES'] = '1,4'  # 指定使用 GPU 4 和 GPU 7
@@ -64,8 +68,17 @@ os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
 # os.environ["CUDA_VISIBLE_DEVICES"] = "3" #,0,1,2,4,5,6,7
 # os.environ['CUDA_VISIBLE_DEVICES'] = '1'  # 指定使用 GPU 1 和 GPU 4
 # os.environ['CUDA_VISIBLE_DEVICES'] = '6'  # 指定使用 GPU 1 和 GPU 4
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # 指定使用 GPU 1 和 GPU 4
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # 指定使用 GPU 1 和 GPU 4
 
+# 创建数据配置对象
+class Config:
+    def __init__(self, args):
+        self.train_subjs = args.train_subjs
+        self.train_maps = args.train_maps
+        self.val_subjs = args.val_subjs
+        self.val_maps = args.val_maps
+        self.mask_root = args.mask_root
+            
 def prep_input(im, acc=4.0,centred=False):
     """Undersample the batch, then reformat them into what the network accepts.
 
@@ -149,6 +162,11 @@ def create_dummy_data():
 
     return train, validate, test
 
+def multicoil2single(kspace, coilmaps):
+    img = MulticoilAdjointOp(center=True, coil_axis=-4, channel_dim_defined=False)(kspace, torch.ones_like(kspace), coilmaps)
+    img /= img.abs().max()
+    kspace = fft2c(img)
+    return kspace, img
 
 '''
 # 从头开始训练
@@ -164,7 +182,7 @@ python train.py --resume models/crnn_mri_epoch_50.pth --lr 0.000005
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--num_epoch', metavar='int', nargs=1, default=['50'],
+    parser.add_argument('--num_epoch', metavar='int', nargs=1, default=['1'],
                         help='number of epochs')
     # parser.add_argument('--num_epoch', metavar='int', nargs=1, default=['300'],
     #                     help='number of epochs')
@@ -186,6 +204,17 @@ if __name__ == '__main__':
                         help='Save output images and masks')
     parser.add_argument('--resume', type=str, default=None,
                     help='Path to checkpoint to resume training')
+    # 添加新的数据路径参数
+    parser.add_argument('--train_subjs', type=str, 
+                       default='/data0/chentao/data/LplusSNet/data/20coil/data/k_cine_multicoil_training.npy')
+    parser.add_argument('--train_maps', type=str,
+                       default='/data0/chentao/data/LplusSNet/data/20coil/csm_cine_multicoil_training.npy')
+    parser.add_argument('--val_subjs', type=str,
+                       default='/data0/chentao/data/LplusSNet/data/20coil/k_cine_multicoil_test.npy')
+    parser.add_argument('--val_maps', type=str,
+                       default='/data0/chentao/data/LplusSNet/data/20coil/csm_cine_multicoil_test.npy')
+    parser.add_argument('--mask_root', type=str,
+                       default='masks/VISTA/e_192x18_acs4_R4.mat')
 
     args = parser.parse_args()
     cuda = True if torch.cuda.is_available() else False
@@ -195,9 +224,9 @@ if __name__ == '__main__':
         torch.cuda.set_device(0)
 
     # Project config
-    model_name = 'crnn_mri_0307_kspace_center_5'
+    model_name = 'crnn_mri_kspace_center_siat_0307_1'
     # 模型中间结果保存位置
-    model_save_dir = './saved_data/0307_5'
+    model_save_dir = './saved_data/siat_0307_1'
     acc = float(args.acceleration_factor[0])  # undersampling rate
     num_epoch = int(args.num_epoch[0])
     batch_size = int(args.batch_size[0])
@@ -215,8 +244,28 @@ if __name__ == '__main__':
     # 初始化 TensorBoard 的 SummaryWriter
     writer = SummaryWriter(log_dir=join(project_root, 'runs', model_name))
 
+    ##读取数据
+    config = Config(args)
+    # 创建数据加载器
+    train_dataset = CINE2DT(config, 'train')
+    val_dataset = CINE2DT(config, 'val')
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=2,
+        pin_memory=True
+    )
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=2,
+        pin_memory=True
+    )
+    
     # Create dataset
-    train, validate, test = create_dummy_data()
+    # train, validate, test = create_dummy_data()
     # data_shape = [Nx, Ny, Nt]
     # Test creating mask and compute the acceleration rate
     # dummy_mask = cs.cartesian_mask(data_shape, acc, sample_n=8)
@@ -294,7 +343,15 @@ if __name__ == '__main__':
         total_batches_validate = len(validate) // batch_size
         total_batches_test = len(test) // batch_size
                
-        for batch_idx, im in enumerate(iterate_minibatch(train, batch_size, shuffle=True)):
+        # for batch_idx, im in enumerate(iterate_minibatch(train, batch_size, shuffle=True)):
+        for batch_idx, (kspace, coilmaps, mask) in enumerate(train_loader):
+            kspace,coilmaps,sampling_mask = kspace.to(device), coilmaps.to(device), sampling_mask.to(device)
+            ref_kspace, ref_img = multicoil2single(kspace, coilmaps)
+            # kspace = ref_kspace*torch.unsqueeze(sampling_mask, dim=2) #[1,18,1,192]
+            kspace = ref_kspace
+            if ref_img.is_cuda:  # 判断张量是否在GPU上
+                ref_img = ref_img.cpu()  # 如果在GPU上，将其复制到CPU上
+                
             # 检查是否是最后一个 epoch 的最后一个 batch
             is_last_epoch = (epoch == num_epoch - 1)
             is_last_batch = (batch_idx == total_batches_train - 1)
@@ -302,7 +359,8 @@ if __name__ == '__main__':
 
             # 数据预处理
             # im_undersample, k_undersample, mask, im_groudtruth = prep_input(im, acc,centred=False)
-            im_undersample, k_undersample, mask, im_groudtruth = prep_input(im, acc,centred=centred)
+            # im_undersample, k_undersample, mask, im_groudtruth = prep_input(im, acc,centred=centred)
+            im_undersample, k_undersample, mask, im_groudtruth = prep_input(ref_img.numpy(), acc,centred=centred)
             # 转换为 PyTorch 变量
             im_undersample = Variable(im_undersample.type(Tensor))
             k_undersample = Variable(k_undersample.type(Tensor))
@@ -391,14 +449,27 @@ if __name__ == '__main__':
         # 记录每个 epoch 的平均训练损失
         writer.add_scalar('Loss/Train_Avg', train_err / train_batches, epoch)
         
+        # ================== 测试阶段 ================== 
         validate_err = 0
         validate_batches = 0
+        test_err = 0
+        test_psnr = 0
+        test_batches = 0
         rec_net.eval()
         # for im in iterate_minibatch(validate, batch_size, shuffle=False):
-        for batch_idx, im in enumerate(iterate_minibatch(validate, batch_size, shuffle=False)):
+        # for batch_idx, im in enumerate(iterate_minibatch(validate, batch_size, shuffle=False)):
+        for batch_idx, (kspace, coilmaps, mask) in enumerate(test_loader):
+            kspace, coilmaps, sampling_mask = kspace.to(device), coilmaps.to(device), sampling_mask.to(device)   
+            # 将多通道 k-space 和图像转换为单通道
+            ref_kspace, ref_img = multicoil2single(kspace, coilmaps)
+            kspace = ref_kspace
+            # 如果图像在 GPU 上，将其转换到 CPU
+            if ref_img.is_cuda:
+                ref_img = ref_img.cpu()
             # im_und, k_und, mask, im_gnd = prep_input(im, acc)
             # im_und, k_und, mask, im_gnd = prep_input(im, acc,centred=False)
-            im_und, k_und, mask, im_gnd = prep_input(im, acc,centred=centred)
+            # im_und, k_und, mask, im_gnd = prep_input(im, acc,centred=centred)
+            im_und, k_und, mask, im_gnd = prep_input(ref_img.numpy(), acc,centred=centred)
             # 检查是否是最后一个 epoch 的最后一个 batch
             is_last_epoch = (epoch == num_epoch - 1)
             is_last_batch = (batch_idx == total_batches_validate - 1)
@@ -406,78 +477,59 @@ if __name__ == '__main__':
             # print('iterate_minibatch-validate-save_last:',save_last)
             
             with torch.no_grad():
-                im_u = Variable(im_und.type(Tensor))
-                k_u = Variable(k_und.type(Tensor))
+                im_und = Variable(im_und.type(Tensor))
+                k_und = Variable(k_und.type(Tensor))
                 mask = Variable(mask.type(Tensor))
-                gnd = Variable(im_gnd.type(Tensor))
-                pred = rec_net(im_u, k_u, mask, test=True)
+                im_gnd = Variable(im_gnd.type(Tensor))
+                pred = rec_net(im_und, k_und, mask, test=True)
             # torch.cuda.empty_cache()
             # 
-            torch.cuda.empty_cache()
-            err = criterion(pred, gnd)
-
-            validate_err += err
-            validate_batches += 1
-            # 记录验证损失
-            writer.add_scalar('Loss/Validate', err.item(), epoch * len(validate) + validate_batches)
-
-
-            if args.debug and validate_batches == 20:
-                break
-        # 记录每个 epoch 的平均验证损失
-        writer.add_scalar('Loss/Validate_Avg', validate_err / validate_batches, epoch)
-        
-        vis = []
-        test_err = 0
-        base_psnr = 0
-        test_psnr = 0
-        test_batches = 0
-        # for im in iterate_minibatch(test, batch_size, shuffle=False):
-        for batch_idx, im in enumerate(iterate_minibatch(test, batch_size, shuffle=True)):
-            # im_und, k_und, mask, im_gnd = prep_input(im, acc)
-            # im_und, k_und, mask, im_gnd = prep_input(im, acc,centred=False)
-            im_und, k_und, mask, im_gnd = prep_input(im, acc,centred=centred)
-            with torch.no_grad():
-                im_u = Variable(im_und.type(Tensor))
-                k_u = Variable(k_und.type(Tensor))
-                mask = Variable(mask.type(Tensor))
-                gnd = Variable(im_gnd.type(Tensor))
-                # pred = rec_net(im_u, k_u, mask, test=True)
-                # 检查是否是最后一个 epoch 的最后一个 batch
-                is_last_epoch = (epoch == num_epoch - 1)
-                is_last_batch = (batch_idx == total_batches_test - 1)
-                save_last = is_last_epoch and is_last_batch
-                # print('iterate_minibatch-test-save_last:',save_last)
-                # pred = rec_net(im_u, k_u, mask, test=True)
-                pred = rec_net(im_u, k_u, mask, test=True, model_save_dir =model_save_dir ,save_last=save_last)
-                print('pred-shape:',pred.shape) #torch.Size([1, 2, 256, 256, 30])
             # torch.cuda.empty_cache()
-            
-            # 
-            torch.cuda.empty_cache()
-            err = criterion(pred, gnd)
-            test_err += err
-            for im_i, und_i, pred_i in zip(im,
-                                           from_tensor_format(im_und.numpy()),
-                                           from_tensor_format(pred.data.cpu().numpy())):
+            # err = criterion(pred, gnd)
+            # 计算指标
+            err = criterion(pred,gnd)
+            test_err += err.item()
+            # 计算PSNR
+            for im_i, und_i, pred_i in zip(
+                    from_tensor_format(im_gnd.cpu().numpy()),
+                    from_tensor_format(im_und.cpu().numpy()),
+                    from_tensor_format(pred.cpu().numpy())
+            ):
                 base_psnr += complex_psnr(im_i, und_i, peak='max')
                 test_psnr += complex_psnr(im_i, pred_i, peak='max')
-            # print('save_fig:',save_fig)
-            # print('test_batches:',test_batches)
-            # print('save_every:',save_every)
-            if save_fig and test_batches % save_every == 0:
-                # print('vis-append------')
-                vis.append((from_tensor_format(im_gnd.numpy())[0],
-                            from_tensor_format(pred.data.cpu().numpy())[0],
-                            from_tensor_format(im_und.numpy())[0],
-                            from_tensor_format(mask.data.cpu().numpy(), mask=True)[0]))
-
             test_batches += 1
-            # 记录测试损失
-            writer.add_scalar('Loss/Test', err.item(), epoch * len(test) + test_batches)
-            # if args.debug and test_batches == 20:
-            if args.debug and test_batches == 50:
-                break
+            
+            # ================== 日志记录 ==================
+            # 训练指标
+            avg_train_loss = train_err / train_batches
+            writer.add_scalar('Loss/Train_Avg', avg_train_loss, epoch)
+            
+            # 测试指标
+            avg_test_loss = test_err / test_batches
+            avg_test_psnr = test_psnr / (test_batches * batch_size)
+            writer.add_scalar('Loss/Test_Avg', avg_test_loss, epoch)
+            writer.add_scalar('PSNR/Test', avg_test_psnr, epoch)
+
+            print(f"Epoch {epoch+1}/{num_epoch}")
+            print(f"Train Loss: {avg_train_loss:.6f} | Test Loss: {avg_test_loss:.6f} | Test PSNR: {avg_test_psnr:.2f}dB")
+
+
+
+            # 记录验证损失
+            writer.add_scalar('Loss/Test', test_err.item(), epoch * len(test_loader) + test_batches)
+
+
+            # if args.debug and validate_batches == 20:
+            #     break
+        # 记录每个 epoch 的平均验证损失
+        # writer.add_scalar('Loss/Test_Avg', test_err / test_batches, epoch)
+        
+        # vis = []
+        # test_err = 0
+        # base_psnr = 0
+        # test_psnr = 0
+        # test_batches = 0
+
 
         # 记录每个 epoch 的平均测试损失
         writer.add_scalar('Loss/Test_Avg', test_err / test_batches, epoch)
@@ -537,7 +589,14 @@ if __name__ == '__main__':
         #     torch.save(rec_net.state_dict(), join(save_dir, name))
         #     print('model parameters saved at %s' % join(os.getcwd(), name))
             # print('')
-        
+        # 保存重建图像
+            if batch_idx % 10 == 0:
+                vis.append((
+                    from_tensor_format(im_gnd.numpy())[0],
+                    from_tensor_format(im_recon.data.cpu().numpy())[0],
+                    from_tensor_format(im_und.numpy())[0],
+                    from_tensor_format(mask.data.cpu().numpy(), mask=True)[0]
+                ))
         # 在原来的保存位置修改
         # if epoch in [1, 2, num_epoch-1]:
         # 在训练循环末尾，修改保存逻辑

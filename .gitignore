@@ -192,3 +192,4 @@ output_*
 README.rst
 nohup.outnohup.out
 *.png
+*.log
